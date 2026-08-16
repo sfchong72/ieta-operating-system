@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listKnowledgeItems } from "@/lib/data/knowledge-items";
 import { PageHeader, EmptyState } from "@/components/ui";
 
@@ -6,14 +7,27 @@ export default async function KnowledgePage() {
 
   return (
     <div>
-      <PageHeader title="Knowledge Base" description="Reusable reference material." />
+      <PageHeader
+        title="Knowledge Base"
+        description="Reusable reference material."
+        action={
+          <Link
+            href="/knowledge/new"
+            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            New Item
+          </Link>
+        }
+      />
       {items.length === 0 ? (
-        <EmptyState title="No knowledge items yet — add your first one" />
+        <EmptyState title="No knowledge items yet — add your first one" cta="New Item" href="/knowledge/new" />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {items.map((item) => (
             <li key={item.id} className="rounded-lg border border-neutral-200 p-4">
-              <p className="font-medium">{item.title}</p>
+              <Link href={`/knowledge/${item.id}`} className="font-medium hover:underline">
+                {item.title}
+              </Link>
               <p className="mt-1 text-xs text-neutral-500">{item.category ?? "—"}</p>
               {item.body && (
                 <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{item.body}</p>
