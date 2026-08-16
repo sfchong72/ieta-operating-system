@@ -31,6 +31,11 @@ export default async function DashboardPage() {
     byPic.set(t.pic_name, (byPic.get(t.pic_name) ?? 0) + 1);
   }
 
+  const attentionNeeded = tasks
+    .filter((t) => t.status !== "posted")
+    .sort((a, b) => (b.priority_score ?? 0) - (a.priority_score ?? 0))
+    .slice(0, 5);
+
   return (
     <div>
       <PageHeader
@@ -44,6 +49,43 @@ export default async function DashboardPage() {
         <StatCard label="Pending approval" value={pendingApproval.length} href="/tasks" />
         <StatCard label="Posted" value={posted.length} href="/tasks" />
         <StatCard label="Delayed" value={delayed.length} href="/tasks" />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold">Attention Needed</h2>
+        <p className="text-xs text-neutral-500">
+          Ranked by priority score (deadline pressure, awaiting approval, missing work link).
+        </p>
+        {attentionNeeded.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">Nothing urgent right now.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {attentionNeeded.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-neutral-200 p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <Link href={`/tasks/${t.id}`} className="font-medium hover:underline">
+                    {t.title}
+                  </Link>
+                  <p className="truncate text-xs text-neutral-500">{t.pic_name}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {(t.priority_score ?? 0) >= 0.7 && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      urgent
+                    </span>
+                  )}
+                  <StatusBadge status={t.status} />
+                  <span className="text-xs text-neutral-400">
+                    {((t.priority_score ?? 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">

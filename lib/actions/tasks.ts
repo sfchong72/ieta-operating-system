@@ -5,13 +5,15 @@ import { redirect } from "next/navigation";
 import {
   createTask,
   deleteTask as deleteTaskRow,
+  getTask,
   updateTaskStatus,
   updateTaskFields,
 } from "@/lib/data/content-tasks";
 import { createWorkFile } from "@/lib/data/work-files";
 import { logActivity } from "@/lib/data/activities";
 import { allTasksPosted, updateIdea } from "@/lib/data/content-ideas";
-import { detectFileType } from "@/lib/ai/rules";
+import { listDepartments } from "@/lib/data/departments";
+import { detectFileType, computePriorityScore } from "@/lib/ai/rules";
 
 export type ActionState = { error?: string; success?: boolean };
 
@@ -22,6 +24,23 @@ function isValidUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Agentic auto-action (low risk): recompute compute_priority_score after any
+ * transition that could change urgency (deadline proximity, status, work link
+ * presence). Rule-based only, per docs/AGENTIC_LAYER.md.
+ */
+async function recomputePriority(taskId: string): Promise<void> {
+  const [task, departments] = await Promise.all([getTask(taskId), listDepartments()]);
+  if (!task) return;
+  const marketingId = departments.find((d) => d.slug === "marketing")?.id ?? null;
+  const { score, reason } = computePriorityScore(task, marketingId);
+  await updateTaskStatus(taskId, {
+    priority_score: score,
+    priority_source: "rule",
+    priority_confidence: reason ? 0.9 : 0.5,
+  });
 }
 
 export async function createTaskAction(
@@ -60,6 +79,8 @@ export async function createTaskAction(
     await updateIdea(idea_id, { status: "tasked" });
   }
 
+  await recomputePriority(task.id);
+
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
   redirect(`/tasks/${task.id}`);
@@ -91,6 +112,8 @@ export async function attachWorkLinkAction(
     detail: `${file_type} link attached: ${url}`,
   });
 
+  await recomputePriority(task_id);
+
   revalidatePath(`/tasks/${task_id}`);
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
@@ -112,6 +135,8 @@ export async function submitForReviewAction(
     actor_name,
     detail: "Submitted for review",
   });
+
+  await recomputePriority(task_id);
 
   revalidatePath(`/tasks/${task_id}`);
   revalidatePath("/tasks");
@@ -141,6 +166,8 @@ export async function approveTaskAction(
     detail: remark ?? "Approved",
   });
 
+  await recomputePriority(task_id);
+
   revalidatePath(`/tasks/${task_id}`);
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
@@ -169,6 +196,8 @@ export async function amendTaskAction(
     actor_name,
     detail: `Sent back for amendment: ${remark}`,
   });
+
+  await recomputePriority(task_id);
 
   revalidatePath(`/tasks/${task_id}`);
   revalidatePath("/tasks");
@@ -210,6 +239,8 @@ export async function markPostedAction(
       await updateIdea(task.idea_id, { status: "archived" });
     }
   }
+
+  await recomputePriority(task_id);
 
   revalidatePath(`/tasks/${task_id}`);
   revalidatePath("/tasks");
