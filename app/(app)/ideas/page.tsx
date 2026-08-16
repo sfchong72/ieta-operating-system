@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listIdeas } from "@/lib/data/content-ideas";
 import { PageHeader, EmptyState } from "@/components/ui";
 
@@ -13,14 +14,27 @@ export default async function IdeasPage() {
 
   return (
     <div>
-      <PageHeader title="Content Ideas" description="The idea pipeline before it becomes a task." />
+      <PageHeader
+        title="Content Ideas"
+        description="The idea pipeline before it becomes a task."
+        action={
+          <Link
+            href="/ideas/new"
+            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            New Idea
+          </Link>
+        }
+      />
       {ideas.length === 0 ? (
-        <EmptyState title="No content ideas yet — add your first idea" />
+        <EmptyState title="No content ideas yet — add your first idea" cta="New Idea" href="/ideas/new" />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {ideas.map((idea) => (
             <li key={idea.id} className="rounded-lg border border-neutral-200 p-4">
-              <p className="font-medium">{idea.title}</p>
+              <Link href={`/ideas/${idea.id}`} className="font-medium hover:underline">
+                {idea.title}
+              </Link>
               <p className="mt-1 text-xs text-neutral-500">
                 {idea.platform ?? "—"} · {idea.topic ?? "—"}
               </p>

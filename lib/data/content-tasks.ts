@@ -11,6 +11,17 @@ export async function listTasks(): Promise<ContentTask[]> {
   return data ?? [];
 }
 
+export async function listTasksByIdea(ideaId: string): Promise<ContentTask[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_tasks")
+    .select("*")
+    .eq("idea_id", ideaId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getTask(id: string): Promise<ContentTask | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
