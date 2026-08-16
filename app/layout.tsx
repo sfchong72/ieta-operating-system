@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "vibe-stack-supabase",
-  description: "Next.js + Supabase starter",
+  title: "IE Operating System",
+  description: "IETA internal OS — SOPs, content ideas, tasks, knowledge base.",
 };
 
 export default function RootLayout({
