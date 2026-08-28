@@ -6,6 +6,7 @@ export type Department = {
   slug: string | null;
   created_at: string;
   user_id: string | null;
+  business_unit_id?: string | null;
 };
 
 export type Sop = {
@@ -107,4 +108,61 @@ export type Activity = {
   detail: string | null;
   created_at: string;
   user_id: string | null;
+};
+
+// ── Milestone 1: Organisation / Business Unit / Team ────────────────────────
+
+export type Organisation = {
+  id: string;
+  name: string;
+  slug: string | null;
+  created_at: string;
+};
+
+export type BusinessUnit = {
+  id: string;
+  organisation_id: string | null;
+  name: string;
+  slug: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type Team = {
+  id: string;
+  department_id: string | null;
+  name: string;
+  created_at: string;
+};
+
+// ── Milestone 2: Auth / access model ────────────────────────────────────────
+
+export type Role = "super_admin" | "management" | "staff" | "intern";
+
+export type Profile = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+};
+
+export type UserRoleAssignment = {
+  id: string;
+  profile_id: string;
+  role: Role;
+  created_at: string;
+};
+
+export type UserBusinessUnitAccess = {
+  id: string;
+  profile_id: string;
+  business_unit_id: string;
+  created_at: string;
+};
+
+export type UserDepartmentAccess = {
+  id: string;
+  profile_id: string;
+  department_id: string;
+  created_at: string;
 };
