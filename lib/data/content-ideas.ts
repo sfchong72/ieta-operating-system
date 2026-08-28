@@ -1,14 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
+import { withJwtClockSkewRetry } from "@/lib/supabase/retry";
 import type { ContentIdea, IdeaStatus } from "./types";
 
 export async function listIdeas(): Promise<ContentIdea[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("content_ideas")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return withJwtClockSkewRetry(async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("content_ideas")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
 export async function getIdea(id: string): Promise<ContentIdea | null> {

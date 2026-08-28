@@ -8,6 +8,7 @@ import type { CurrentUser } from "@/lib/data/access";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/planner", label: "Planner" },
   { href: "/sops", label: "SOPs" },
   { href: "/ideas", label: "Content Ideas" },
   { href: "/tasks", label: "Tasks" },

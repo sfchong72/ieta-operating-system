@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { withJwtClockSkewRetry } from "@/lib/supabase/retry";
 import type {
   Profile,
   Role,
@@ -14,30 +15,43 @@ export type CurrentUser = {
   departmentIds: string[];
 };
 
-/** The logged-in user's profile + role + access grants, or null if signed out. */
+/**
+ * The logged-in user's profile + role + access grants, or null if signed
+ * out. This is the very first query made after a fresh login (called from
+ * the (app) layout before anything else renders), so it's the most likely
+ * place to hit the PGRST303 "JWT issued at future" clock-skew race —
+ * wrapped in a retry rather than silently treating a query error the same
+ * as "no profile exists yet", which would otherwise wrongly bounce a real,
+ * fully-provisioned user back to /login.
+ */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  return withJwtClockSkewRetry(async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const [{ data: profile }, { data: roleRow }, { data: buAccess }, { data: deptAccess }] =
-    await Promise.all([
+    const [profileRes, roleRes, buAccessRes, deptAccessRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("user_role_assignment").select("*").eq("profile_id", user.id).maybeSingle(),
       supabase.from("user_business_unit_access").select("*").eq("profile_id", user.id),
       supabase.from("user_department_access").select("*").eq("profile_id", user.id),
     ]);
 
-  if (!profile) return null;
+    for (const res of [profileRes, roleRes, buAccessRes, deptAccessRes]) {
+      if (res.error) throw res.error;
+    }
 
-  return {
-    profile,
-    role: (roleRow?.role as Role) ?? null,
-    businessUnitIds: (buAccess ?? []).map((r) => r.business_unit_id),
-    departmentIds: (deptAccess ?? []).map((r) => r.department_id),
-  };
+    if (!profileRes.data) return null;
+
+    return {
+      profile: profileRes.data,
+      role: (roleRes.data?.role as Role) ?? null,
+      businessUnitIds: (buAccessRes.data ?? []).map((r) => r.business_unit_id),
+      departmentIds: (deptAccessRes.data ?? []).map((r) => r.department_id),
+    };
+  });
 }
 
 export async function listProfiles(): Promise<Profile[]> {
