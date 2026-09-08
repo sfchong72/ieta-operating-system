@@ -24,3 +24,11 @@ export type WorkTaskArtifact = { id: string; task_id: string; added_by: string; 
 export type WorkTaskComment = { id: string; task_id: string; author_id: string; comment_kind: "comment" | "supervisor_feedback"; audience: "participants" | "management_only"; body: string; created_at: string };
 export type WorkTaskUpdate = { id: string; task_id: string; created_by: string; status: WorkStatus; progress_percent: number; blocker_or_help: string | null; is_meaningful: boolean; created_at: string };
 export type WorkAssignee = { profile_id: string; full_name: string; role: string; department_id: string };
+
+export function filterWorkTasks<T extends Pick<WorkTask, "title" | "task_number" | "project_reference" | "status" | "department_id">>(tasks: T[], filters: { q?: string; status?: string; department?: string }): T[] {
+  const query = filters.q?.trim().toLocaleLowerCase() ?? "";
+  return tasks.filter((task) =>
+    (!query || [task.title, task.task_number, task.project_reference ?? ""].some((value) => value.toLocaleLowerCase().includes(query)))
+    && (!filters.status || task.status === filters.status)
+    && (!filters.department || task.department_id === filters.department));
+}

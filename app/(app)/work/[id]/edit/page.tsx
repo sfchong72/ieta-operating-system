@@ -12,5 +12,6 @@ export default async function EditWorkTaskPage({ params }: { params: Promise<{ i
   if (!user || !["super_admin", "management"].includes(user.role ?? "")) redirect(`/work/${id}`);
   const [task, businessUnits, departments, assignees] = await Promise.all([getWorkTask(id), listBusinessUnits(), listDepartments(), listWorkAssignees()]);
   if (!task) notFound();
+  if (user.role === "management" && !user.businessUnitIds.includes(task.business_unit_id)) redirect(`/work/${id}`);
   return <div><PageHeader title={`Edit ${task.task_number}`} description="Update assignment and scope. Progress remains in Quick Update." /><WorkTaskForm task={task} businessUnits={businessUnits} departments={departments} assignees={assignees} /></div>;
 }

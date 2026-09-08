@@ -46,7 +46,7 @@ export function WorkTaskForm({
         <Field label="Business unit" required>
           <select name="business_unit_id" required defaultValue={task?.business_unit_id ?? ""} className={inputClass}>
             <option value="">Select business unit</option>
-            {businessUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+            {businessUnits.filter((unit) => unit.is_active || unit.id === task?.business_unit_id).map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
           </select>
         </Field>
         <Field label="Project / campaign">

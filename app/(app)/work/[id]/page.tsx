@@ -13,7 +13,8 @@ export default async function WorkTaskDetailPage({ params }: { params: Promise<{
   const detail = await getWorkTaskDetail(id);
   if (!detail.task) notFound();
   const task = detail.task;
-  const canManage = ["super_admin", "management"].includes(user.role ?? "");
+  const canManage = user.role === "super_admin"
+    || (user.role === "management" && user.businessUnitIds.includes(task.business_unit_id));
   const [department, assignees] = await Promise.all([getDepartment(task.department_id), canManage ? listWorkAssignees() : Promise.resolve([])]);
   const names = new Map(assignees.map((person) => [person.profile_id, person.full_name]));
   names.set(user.profile.id, user.profile.full_name ?? user.profile.email);

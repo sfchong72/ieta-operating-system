@@ -847,7 +847,7 @@ begin
   if not coalesce(p_data_handling_confirmed, false) then
     raise exception using errcode = '22023', message = 'Confirm that this comment contains no sensitive personal data.';
   end if;
-  if not public.fn_wm_can_view_task(uid, p_task_id) then
+  if not public.fn_wm_can_update_task(uid, p_task_id) then
     raise exception using errcode = '42501', message = 'Not authorised to comment on this task.';
   end if;
   if nullif(btrim(p_body), '') is null then
@@ -895,7 +895,9 @@ begin
   select * into strict target_task from public.work_tasks where id = p_task_id for update;
   select exists (
     select 1 from public.work_task_artifacts a
-    where a.task_id = p_task_id and a.artifact_type in ('final', 'evidence')
+    where a.task_id = p_task_id
+      and a.artifact_type in ('final', 'evidence')
+      and public.fn_wm_can_view_artifact(uid, a.id)
   ) into has_evidence;
 
   if p_waive_output and target_task.output_required then
