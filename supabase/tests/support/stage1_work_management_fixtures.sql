@@ -74,6 +74,27 @@ where email in (
   'intern@stage1.ieos.test'
 );
 
+insert into auth.identities (
+  id, user_id, provider_id, identity_data, provider,
+  last_sign_in_at, created_at, updated_at
+)
+select
+  u.id,
+  u.id,
+  u.id::text,
+  jsonb_build_object('sub', u.id::text, 'email', u.email),
+  'email',
+  now(),
+  now(),
+  now()
+from auth.users u
+where u.email in (
+  'director@stage1.ieos.test',
+  'manager@stage1.ieos.test',
+  'intern@stage1.ieos.test'
+)
+on conflict do nothing;
+
 insert into public.profiles (id, email, full_name, is_active) values
   ('71000000-0000-0000-0000-000000000001', 'director@stage1.ieos.test', 'TEST Director', true),
   ('71000000-0000-0000-0000-000000000002', 'manager@stage1.ieos.test', 'TEST Manager', true),

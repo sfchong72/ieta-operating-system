@@ -374,9 +374,20 @@ try {
       Write-Host 'LOCAL UAT READY: http://127.0.0.1:3201/login'
       Write-Host 'Synthetic accounts: director@stage1.ieos.test, manager@stage1.ieos.test, intern@stage1.ieos.test'
       Write-Host 'Synthetic password: IEOS-Stage1-UAT-Only!'
-      $uatConfirmation = Read-Host 'After desktop/mobile UAT, type PASS to finish and clean up'
-      if ($uatConfirmation -ne 'PASS') { throw 'Interactive UAT was not confirmed as PASS.' }
-      $Results['Desktop/mobile UAT'] = 'PASS - operator confirmed desktop and mobile-width checks against synthetic local data'
+      $uatSignal = Join-Path $OutputDirectory 'uat-pass.signal'
+      if (Test-Path -LiteralPath $uatSignal) { Remove-Item -LiteralPath $uatSignal -Force }
+      Write-Host "Waiting for Codex UAT completion signal: $uatSignal"
+      $uatConfirmed = $false
+      for ($attempt = 0; $attempt -lt 240; $attempt++) {
+        Start-Sleep -Seconds 5
+        if (Test-Path -LiteralPath $uatSignal) {
+          $uatConfirmed = (Get-Content -LiteralPath $uatSignal -Raw).Trim() -eq 'PASS'
+          break
+        }
+      }
+      if (-not $uatConfirmed) { throw 'Interactive UAT was not confirmed as PASS before timeout.' }
+      Remove-Item -LiteralPath $uatSignal -Force
+      $Results['Desktop/mobile UAT'] = 'PASS - Codex completed desktop and mobile-width checks against synthetic local data'
     }
     $AcceptancePassed = $true
   } finally {
