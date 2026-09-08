@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getIdea } from "@/lib/data/content-ideas";
 import { listTasksByIdea } from "@/lib/data/content-tasks";
+import { listRecordEditLog } from "@/lib/data/record-edit-log";
 import { StatusBadge } from "@/components/ui";
 import { DeleteButton } from "@/components/delete-button";
 import { deleteIdeaAction } from "@/lib/actions/ideas";
@@ -21,7 +22,10 @@ export default async function IdeaDetailPage({
   const { id } = await params;
   const idea = await getIdea(id);
   if (!idea) notFound();
-  const tasks = await listTasksByIdea(id);
+  const [tasks, editLog] = await Promise.all([
+    listTasksByIdea(id),
+    listRecordEditLog("content_ideas", id),
+  ]);
 
   const tags = idea.suggested_tags ? idea.suggested_tags.split(",").filter(Boolean) : [];
 
@@ -93,6 +97,27 @@ export default async function IdeaDetailPage({
                   {t.title}
                 </Link>
                 <StatusBadge status={t.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold">Edit history</h2>
+        {editLog.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No edits yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {editLog.map((e) => (
+              <li key={e.id} className="rounded-md border border-neutral-200 p-3 text-sm">
+                <span className="font-medium">
+                  {e.actor?.full_name ?? e.actor?.email ?? "Unknown"}
+                </span>{" "}
+                <span className="text-neutral-600">{e.summary}</span>
+                <div className="mt-1 text-xs text-neutral-400">
+                  {new Date(e.created_at).toLocaleString()}
+                </div>
               </li>
             ))}
           </ul>

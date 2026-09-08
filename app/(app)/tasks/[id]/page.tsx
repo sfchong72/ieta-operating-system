@@ -13,6 +13,7 @@ import { AttachLinkForm } from "@/components/task-actions/attach-link-form";
 import { SubmitReviewForm } from "@/components/task-actions/submit-review-form";
 import { ApprovalForms } from "@/components/task-actions/approval-forms";
 import { MarkPostedForm } from "@/components/task-actions/mark-posted-form";
+import { EditWorkFileForm } from "@/components/task-actions/edit-work-file-form";
 
 export default async function TaskDetailPage({
   params,
@@ -53,11 +54,19 @@ export default async function TaskDetailPage({
             )}
           </div>
         </div>
-        <DeleteButton
-          action={deleteTaskAction}
-          fields={{ task_id: task.id }}
-          itemLabel="task"
-        />
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/tasks/${task.id}/edit`}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50"
+          >
+            Edit
+          </Link>
+          <DeleteButton
+            action={deleteTaskAction}
+            fields={{ task_id: task.id }}
+            itemLabel="task"
+          />
+        </div>
       </div>
 
       <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-neutral-200 p-4 text-sm sm:grid-cols-3">
@@ -117,18 +126,21 @@ export default async function TaskDetailPage({
       {workFiles.length > 0 && (
         <div className="mb-6 rounded-lg border border-neutral-200 p-4">
           <h2 className="text-sm font-semibold">Work files</h2>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-2">
             {workFiles.map((f) => (
               <li key={f.id} className="text-sm">
-                <a
-                  href={f.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  {f.label || f.url}
-                </a>{" "}
-                <span className="text-xs text-neutral-500">({f.file_type})</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {f.label || f.url}
+                  </a>
+                  <span className="text-xs text-neutral-500">({f.file_type})</span>
+                  <EditWorkFileForm file={f} taskId={task.id} />
+                </div>
               </li>
             ))}
           </ul>

@@ -9,7 +9,7 @@ import {
   updateTaskStatus,
   updateTaskFields,
 } from "@/lib/data/content-tasks";
-import { createWorkFile } from "@/lib/data/work-files";
+import { createWorkFile, getWorkFile, updateWorkFile } from "@/lib/data/work-files";
 import { logActivity } from "@/lib/data/activities";
 import { allTasksPosted, updateIdea } from "@/lib/data/content-ideas";
 import { listDepartments } from "@/lib/data/departments";
@@ -249,15 +249,84 @@ export async function markPostedAction(
   return { success: true };
 }
 
-export async function updateTaskRemarksAction(
+/**
+ * Full task edit — title, PIC, department, platform, deadline, remarks.
+ * Logs exactly which fields changed to `activities` (action: "edited") so
+ * edits are never silent, matching how every other task event is logged.
+ */
+export async function updateTaskAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const task_id = String(formData.get("task_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const pic_name = String(formData.get("pic_name") ?? "").trim();
+  const department_id = String(formData.get("department_id") ?? "") || null;
+  const platform = String(formData.get("platform") ?? "").trim() || null;
+  const deadline = String(formData.get("deadline") ?? "").trim() || null;
   const remarks = String(formData.get("remarks") ?? "").trim() || null;
-  if (!task_id) return { error: "Missing task." };
+  const actor_name = String(formData.get("actor_name") ?? "").trim() || pic_name || "Unknown";
 
-  await updateTaskFields(task_id, { remarks });
+  if (!task_id) return { error: "Missing task." };
+  if (!title) return { error: "Task title is required." };
+  if (!pic_name) return { error: "PIC name is required." };
+
+  const before = await getTask(task_id);
+  if (!before) return { error: "Task not found." };
+
+  const next = { title, pic_name, department_id, platform, deadline, remarks };
+  const changedFields = (Object.keys(next) as (keyof typeof next)[]).filter(
+    (key) => (before[key] ?? null) !== (next[key] ?? null),
+  );
+
+  await updateTaskFields(task_id, next);
+
+  if (changedFields.length > 0) {
+    await logActivity({
+      task_id,
+      action: "edited",
+      actor_name,
+      detail: `Edited: ${changedFields.join(", ")}`,
+    });
+  }
+
+  await recomputePriority(task_id);
+
+  revalidatePath(`/tasks/${task_id}`);
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Correct an existing work-file link/label after the fact, not just add new ones. */
+export async function updateWorkFileAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const work_file_id = String(formData.get("work_file_id") ?? "");
+  const task_id = String(formData.get("task_id") ?? "");
+  const url = String(formData.get("url") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim() || null;
+  const actor_name = String(formData.get("actor_name") ?? "").trim() || "Unknown";
+
+  if (!work_file_id || !task_id) return { error: "Missing work file." };
+  if (!url || !isValidUrl(url)) return { error: "Please enter a valid URL." };
+
+  const before = await getWorkFile(work_file_id);
+  if (!before) return { error: "Work file not found." };
+
+  const file_type = detectFileType(url);
+  await updateWorkFile(work_file_id, { label, url, file_type });
+
+  if (before.url !== url || before.label !== label) {
+    await logActivity({
+      task_id,
+      action: "edited",
+      actor_name,
+      detail: `Work link updated: ${url}`,
+    });
+  }
+
   revalidatePath(`/tasks/${task_id}`);
   return { success: true };
 }

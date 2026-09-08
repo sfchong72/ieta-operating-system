@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/data/access";
 import { createSop, updateSop, deleteSop as deleteSopRow } from "@/lib/data/sops";
 
 export type ActionState = { error?: string; success?: boolean };
@@ -25,11 +26,24 @@ export async function createSopAction(
     }
   }
 
-  const sop = await createSop({ title, department_id, master_drive_link, version, content });
+  const currentUser = await getCurrentUser();
+
+  const sop = await createSop({
+    title,
+    department_id,
+    master_drive_link,
+    version,
+    content,
+    user_id: currentUser?.profile.id ?? null,
+  });
   revalidatePath("/sops");
   redirect(`/sops/${sop.id}`);
 }
 
+/**
+ * Full SOP edit — title, department, drive link, version, content. The
+ * staging database trigger records changed field names atomically.
+ */
 export async function updateSopAction(
   _prev: ActionState,
   formData: FormData,
@@ -51,7 +65,12 @@ export async function updateSopAction(
     }
   }
 
-  await updateSop(id, { title, department_id, master_drive_link, version, content });
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { error: "Not signed in." };
+
+  const next = { title, department_id, master_drive_link, version, content };
+  await updateSop(id, next);
+
   revalidatePath("/sops");
   revalidatePath(`/sops/${id}`);
   redirect(`/sops/${id}`);

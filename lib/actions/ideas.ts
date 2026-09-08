@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createIdea, updateIdea, deleteIdea as deleteIdeaRow } from "@/lib/data/content-ideas";
+import {
+  createIdea,
+  updateIdea,
+  deleteIdea as deleteIdeaRow,
+} from "@/lib/data/content-ideas";
 import { suggestTags } from "@/lib/ai/rules";
 import type { IdeaStatus } from "@/lib/data/types";
 
@@ -35,6 +39,10 @@ export async function createIdeaAction(
   redirect(`/ideas/${idea.id}`);
 }
 
+/**
+ * Full idea edit — title, platform, topic, status. The staging database
+ * trigger records changed field names atomically in record_edit_log.
+ */
 export async function updateIdeaAction(
   _prev: ActionState,
   formData: FormData,
@@ -48,7 +56,9 @@ export async function updateIdeaAction(
   if (!id) return { error: "Missing idea." };
   if (!title) return { error: "Idea title is required." };
 
-  await updateIdea(id, { title, platform, topic, status });
+  const next = { title, platform, topic, status };
+  await updateIdea(id, next);
+
   revalidatePath("/ideas");
   revalidatePath(`/ideas/${id}`);
   redirect(`/ideas/${id}`);

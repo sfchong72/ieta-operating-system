@@ -34,6 +34,10 @@ export async function createKnowledgeItemAction(
   redirect(`/knowledge/${item.id}`);
 }
 
+/**
+ * Full knowledge item edit — title, category, body, tags. The staging
+ * database trigger records changed field names atomically in record_edit_log.
+ */
 export async function updateKnowledgeItemAction(
   _prev: ActionState,
   formData: FormData,
@@ -47,7 +51,9 @@ export async function updateKnowledgeItemAction(
   if (!id) return { error: "Missing item." };
   if (!title) return { error: "Title is required." };
 
-  await updateKnowledgeItem(id, { title, category, body, tags });
+  const next = { title, category, body, tags };
+  await updateKnowledgeItem(id, next);
+
   revalidatePath("/knowledge");
   revalidatePath(`/knowledge/${id}`);
   redirect(`/knowledge/${id}`);
