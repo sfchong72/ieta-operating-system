@@ -1,13 +1,14 @@
 [CmdletBinding()]
 param(
   [string]$OutputDirectory,
+  [string]$RequiredAncestor = 'a353df594e740cf423fda2ee1031b8ae0754e9ab',
+  [string]$RequiredBranch = 'codex-ieos-stage0-5-governance',
   [switch]$SelfTest
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$ExpectedHead = 'a353df594e740cf423fda2ee1031b8ae0754e9ab'
 $ExpectedCliVersion = '2.116.0'
 $Repository = [IO.Path]::GetFullPath($PSScriptRoot)
 $RunId = [guid]::NewGuid().ToString('N')
@@ -36,6 +37,7 @@ $StackAttempted = $false
 $DbContainer = $null
 $SupabaseExe = $null
 $SupabasePrefix = @()
+$TestedHead = 'NOT VERIFIED'
 
 $StagingScripts = @(
   '001_mirror_schema.sql',
@@ -165,7 +167,9 @@ function Write-Report([int]$ExitCode) {
     '# IEOS approval/edit disposable test report',
     '',
     "- Repository: ``$Repository``",
-    "- Baseline HEAD: ``$ExpectedHead``",
+    "- Required preserved ancestor: ``$RequiredAncestor``",
+    "- Tested HEAD: ``$TestedHead``",
+    "- Required branch: ``$RequiredBranch``",
     "- Disposable project: ``$ProjectId``",
     '- Hosted/production connectivity: prohibited by command guards, cleared environment variables, no link markers, and local/container-only database commands',
     "- Process exit code: **$ExitCode**",
@@ -219,8 +223,27 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 try {
   $CurrentPhase = 'Environment setup'
   $gitHead = (& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository rev-parse HEAD).Trim()
-  if ($LASTEXITCODE -ne 0 -or $gitHead -ne $ExpectedHead) {
-    throw "Repository HEAD diverged from preserved baseline $ExpectedHead. Actual: $gitHead"
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Unable to determine repository HEAD.'
+  }
+  $TestedHead = $gitHead
+
+  $gitBranch = (& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository branch --show-current).Trim()
+  if ($LASTEXITCODE -ne 0 -or $gitBranch -ne $RequiredBranch) {
+    throw "Repository branch must be $RequiredBranch. Actual: $gitBranch"
+  }
+
+  & git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository merge-base --is-ancestor $RequiredAncestor $gitHead
+  if ($LASTEXITCODE -ne 0) {
+    throw "Repository HEAD is not descended from preserved baseline $RequiredAncestor. Actual: $gitHead"
+  }
+
+  $workingTree = @(& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository status --porcelain --untracked-files=all)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Unable to verify repository working tree.'
+  }
+  if ($workingTree.Count -gt 0) {
+    throw 'Repository working tree must be clean before disposable acceptance.'
   }
   foreach ($scriptName in $StagingScripts) {
     if (-not (Test-Path -LiteralPath (Join-Path $Repository "supabase\staging\$scriptName"))) {
