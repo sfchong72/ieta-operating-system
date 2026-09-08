@@ -6,9 +6,9 @@ select extensions.plan(60);
 -- Anonymous identity.
 set local role anon;
 select ieos_stage1_test.claim(null, 'anon');
-select extensions.is(
-  (select count(*)::bigint from public.work_tasks), 0::bigint,
-  'T01 [ANON SELECT] no work task is visible'
+select extensions.ok(
+  not ieos_stage1_test.probe('select count(*) from public.work_tasks'),
+  'T01 [ANON SELECT] work task query is denied'
 );
 select extensions.ok(
   not ieos_stage1_test.probe($q$select public.create_work_task(
