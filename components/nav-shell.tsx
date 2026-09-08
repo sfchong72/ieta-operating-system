@@ -8,14 +8,20 @@ import type { CurrentUser } from "@/lib/data/access";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/work", label: "My Work" },
   { href: "/planner", label: "Planner" },
   { href: "/sops", label: "SOPs" },
   { href: "/ideas", label: "Content Ideas" },
-  { href: "/tasks", label: "Tasks" },
+  { href: "/tasks", label: "Legacy Content Tasks" },
   { href: "/knowledge", label: "Knowledge Base" },
 ];
 
 const APPROVALS_ITEM = { href: "/approvals", label: "My Approvals" };
+const TEAM_WORK_ITEMS = [
+  { href: "/work/team", label: "Team Tasks" },
+  { href: "/work/new", label: "Create Task" },
+  { href: "/work/attention", label: "Needs Attention" },
+];
 const ADMIN_ITEM = { href: "/admin/users", label: "Admin · Users" };
 
 function NavLinks({
@@ -30,13 +36,14 @@ function NavLinks({
   const pathname = usePathname();
   const items = [
     ...NAV_ITEMS,
+    ...(isApprover ? TEAM_WORK_ITEMS : []),
     ...(isApprover ? [APPROVALS_ITEM] : []),
     ...(isSuperAdmin ? [ADMIN_ITEM] : []),
   ];
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/");
+        const active = pathname === item.href || (item.href !== "/work" && pathname.startsWith(item.href + "/"));
         return (
           <Link
             key={item.href}
