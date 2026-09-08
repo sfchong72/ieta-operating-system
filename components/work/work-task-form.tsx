@@ -16,11 +16,13 @@ export function WorkTaskForm({
   departments,
   assignees,
   task,
+  canSetPc,
 }: {
   businessUnits: BusinessUnit[];
   departments: Department[];
   assignees: WorkAssignee[];
   task?: WorkTask;
+  canSetPc: boolean;
 }) {
   const [state, action] = useActionState(task ? updateWorkTaskAction : createWorkTaskAction, EMPTY);
   const uniqueAssignees = Array.from(new Map(assignees.map((person) => [person.profile_id, person])).values());
@@ -70,7 +72,7 @@ export function WorkTaskForm({
           <select name="priority" defaultValue={task?.priority ?? "medium"} className={inputClass}>{WORK_PRIORITIES.map((item) => <option key={item} value={item}>{humanise(item)}</option>)}</select>
         </Field>
         <Field label="Sensitivity" required>
-          <select name="task_sensitivity" defaultValue={task?.task_sensitivity ?? "operational"} className={inputClass}>{ARTIFACT_SENSITIVITIES.map((item) => <option key={item} value={item}>{humanise(item)}</option>)}</select>
+          <select name="task_sensitivity" defaultValue={task?.task_sensitivity ?? "operational"} className={inputClass}>{ARTIFACT_SENSITIVITIES.filter((item) => item !== "pc_restricted" || canSetPc || task?.task_sensitivity === item).map((item) => <option key={item} value={item}>{humanise(item)}</option>)}</select>
         </Field>
       </div>
 

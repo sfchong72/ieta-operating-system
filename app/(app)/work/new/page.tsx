@@ -10,5 +10,5 @@ export default async function CreateWorkTaskPage() {
   const user = await getCurrentUser();
   if (!user || !["super_admin", "management"].includes(user.role ?? "")) redirect("/work");
   const [businessUnits, departments, assignees] = await Promise.all([listBusinessUnits(), listDepartments(), listWorkAssignees()]);
-  return <div><PageHeader title="Create Task" description="Assign clear work with an expected output and deadline." /><WorkTaskForm businessUnits={businessUnits} departments={departments} assignees={assignees} /></div>;
+  return <div><PageHeader title="Create Task" description="Assign clear work with an expected output and deadline." /><WorkTaskForm businessUnits={businessUnits} departments={departments} assignees={assignees} canSetPc={user.role === "super_admin"} /></div>;
 }

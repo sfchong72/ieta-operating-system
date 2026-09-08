@@ -370,7 +370,8 @@ stable
 security definer
 set search_path = ''
 as $$
-  select exists (
+  select public.fn_wm_can_view_task(auth.uid(), target_task)
+    and exists (
     select 1 from public.work_task_artifacts a
     where a.task_id = target_task and a.artifact_type in ('final', 'evidence')
   );
@@ -566,6 +567,9 @@ begin
   ) then
     raise exception using errcode = '42501', message = 'Selected scope is outside your access.';
   end if;
+  if p_task_sensitivity = 'pc_restricted' and public.fn_wm_role_of(uid) <> 'super_admin' then
+    raise exception using errcode = '42501', message = 'Only the Director can create a P&C-restricted task.';
+  end if;
   if p_initial_status not in ('backlog', 'not_started') then
     raise exception using errcode = '22023', message = 'New tasks must start as backlog or not started.';
   end if;
@@ -630,6 +634,12 @@ begin
   end if;
 
   select * into strict before_task from public.work_tasks where id = p_task_id for update;
+
+  if p_task_sensitivity = 'pc_restricted'
+    and before_task.task_sensitivity <> 'pc_restricted'
+    and public.fn_wm_role_of(uid) <> 'super_admin' then
+    raise exception using errcode = '42501', message = 'Only the Director can classify a task as P&C restricted.';
+  end if;
 
   changed_fields := array_remove(array[
     case when before_task.business_unit_id is distinct from p_business_unit_id then 'business_unit_id' end,
@@ -806,6 +816,11 @@ begin
     'management_only', 'pc_restricted'
   ) then
     raise exception using errcode = '22023', message = 'Invalid artifact sensitivity.';
+  end if;
+  if p_artifact_sensitivity = 'pc_restricted'
+    and public.fn_wm_role_of(uid) <> 'super_admin'
+    and not public.fn_wm_has_grant(uid, p_task_id, 'pc_restricted') then
+    raise exception using errcode = '42501', message = 'P&C artifact access is required before adding this link.';
   end if;
   if p_url is null or p_url !~* '^https?://[^[:space:]]+$' or char_length(p_url) > 2048 then
     raise exception using errcode = '22023', message = 'A valid http/https link is required.';
@@ -1098,6 +1113,14 @@ revoke all on function public.add_work_task_comment(uuid, text, boolean) from pu
 revoke all on function public.supervise_work_task(uuid, text, text, boolean, boolean, text, boolean, boolean, boolean) from public, anon;
 revoke all on function public.grant_work_task_access(uuid, uuid, text) from public, anon;
 revoke all on function public.list_work_task_assignees() from public, anon;
+
+-- These four predicates are called by RLS/view expressions under the
+-- authenticated role. Their subject is bound to auth.uid() (directly or via
+-- fn_wm_can_view_task), so exposing boolean results does not bypass scope.
+grant execute on function public.fn_wm_can_manage_task(uuid, uuid) to authenticated;
+grant execute on function public.fn_wm_can_view_task(uuid, uuid) to authenticated;
+grant execute on function public.fn_wm_can_view_artifact(uuid, uuid) to authenticated;
+grant execute on function public.fn_wm_task_has_completion_artifact(uuid) to authenticated;
 
 grant execute on function public.create_work_task(uuid, uuid, uuid, text, text, text, text, boolean, date, text, text, text, boolean) to authenticated;
 grant execute on function public.update_work_task_management(uuid, uuid, uuid, uuid, text, text, text, text, boolean, date, text, text, boolean) to authenticated;

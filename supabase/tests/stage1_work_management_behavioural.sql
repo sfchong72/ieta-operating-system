@@ -251,9 +251,9 @@ select extensions.ok(
   'T46 [MANAGEMENT UPDATE] manager can edit controlled assignment fields'
 );
 select extensions.ok(
-  ieos_stage1_test.execute_ok($q$select public.add_managed_work_task_artifact(
+  not ieos_stage1_test.probe($q$select public.add_managed_work_task_artifact(
     '72000000-0000-0000-0000-000000000002','reference','pc_restricted','Restricted brief','https://example.test/restricted-brief')$q$),
-  'T47 [MANAGED ARTIFACT] manager can classify a restricted artifact'
+  'T47 [MANAGED ARTIFACT] manager without P&C access cannot add a restricted artifact'
 );
 select extensions.is(
    (select count(*)::bigint from public.work_task_artifacts where task_id='72000000-0000-0000-0000-000000000002' and label='Restricted brief')
