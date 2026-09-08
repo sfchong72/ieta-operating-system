@@ -15,7 +15,7 @@ approval to begin the next phase.
 - [x] Incorporate Claire's sequencing, UI, flag, P&C, and
   artifact-sensitivity amendments.
 
-## Stage 0.5 — mandatory before coding
+## Stage 0.5 — complete and accepted
 
 - [x] Preserve the post-stabilisation state: 50 expanded working files, ZIP,
   file tree, Git bundle, and manifest.
@@ -23,21 +23,21 @@ approval to begin the next phase.
 - [x] Install authoritative `AGENTS.md`.
 - [x] Add execution guardrails and authoritative roadmap.
 - [x] Mark legacy demo-first documents superseded.
-- [ ] Enable and verify local push protection.
-- [ ] Verify disposable harness rejects hosted Supabase linkage/connections.
-- [ ] Split recovered work into reviewable local commits without pushing.
-- [ ] Re-run existing application and disposable acceptance gates.
-- [ ] Produce Stage 0.5 completion report.
+- [x] Enable and verify local push protection.
+- [x] Verify disposable harness rejects hosted Supabase linkage/connections.
+- [x] Split recovered work into reviewable local commits without pushing.
+- [x] Re-run existing application and disposable acceptance gates.
+- [x] Produce Stage 0.5 completion report.
 
-## Stage 1 — not started; separate approval required
+## Stage 1 — approved; local implementation only
 
-- [ ] Generate an additive local migration for the generic work-management
+- [x] Generate an additive local migration for the generic work-management
   foundation.
-- [ ] Implement RLS/capabilities and behavioural identity matrix.
-- [ ] Implement Task Tracker and Task Detail only.
-- [ ] Implement task updates, comments, artifacts, and events foundation.
-- [ ] Enforce completion evidence or an approved waiver.
-- [ ] Implement the approved attention flags.
+- [x] Implement RLS/capabilities and behavioural identity matrix.
+- [x] Implement Task Tracker and Task Detail only.
+- [x] Implement task updates, comments, artifacts, and events foundation.
+- [x] Enforce completion evidence or an approved waiver.
+- [x] Implement the approved attention flags.
 - [ ] Run disposable replay, security matrix, regression, typecheck, lint,
   build, and manual UAT.
 - [ ] Produce Stage 1 acceptance and rollback report.

@@ -12,8 +12,9 @@ they conflict.
 - The approved product authority is `docs/IEOS_MASTER_PLAN.md`.
 - The execution authority is `docs/EXECUTION_GUARDRAILS.md`.
 - The current permitted phase is recorded in `docs/TASKS.md`.
-- Current permitted phase: Stage 0.5 only until its completion report is
-  accepted. Stage 1 implementation must not start early.
+- Stage 0.5 is complete and accepted. Current permitted phase: Stage 1 Task
+  Tracker + Task Detail only, on `codex-ieos-stage1-task-tracker`.
+- Stop after the Stage 1 completion/UAT report. Stage 2 is not authorised.
 
 ## Safety gates
 
@@ -54,7 +55,7 @@ they conflict.
   reference only authorised restricted record IDs or restricted file links.
 - Actual passwords must never be stored in IEOS.
 
-## Stage 1 scope after separate approval
+## Approved Stage 1 scope
 
 The frontend remains limited to Task Tracker, Task Detail, Daily Update, and
 Manager Dashboard across Stages 1–3. Stage 1 implements Task Tracker and Task

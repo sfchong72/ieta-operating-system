@@ -1,29 +1,29 @@
-# IEOS Stage 0.5 Execution Guardrails
+# IEOS Controlled Development Guardrails
 
 This document is authoritative for every agent and developer working in this
 repository. If a historical document conflicts with it, this document wins.
 
 ## Controlled workspace
 
-- Use the local branch `codex-ieos-stage0-5-governance` for Stage 0.5.
+- Use `codex-ieos-stage1-task-tracker` for the approved Stage 1 scope.
 - The pre-governance state is preserved outside the repository as a ZIP, Git
   bundle, exact file tree, and manifest.
 - Do not let Hermes and Codex edit this worktree concurrently.
 - Repository-local push protection must remain enabled until Claire explicitly
   authorises a push.
 
-## Allowed before Stage 1 approval
+## Allowed in Stage 1
 
 - Read repository code, history, and documentation.
 - Preserve local files and refs.
-- Install or refine governance documentation and local safety checks.
-- Organise recovered work into reviewable local commits.
+- Implement Task Tracker, Task Detail, Create/Update Task, Quick Update,
+  comments, artifacts, attention filters, scoped access, and immutable audit.
 - Run local typecheck, lint, build, and disposable tests.
 - Produce reports.
 
 ## Prohibited
 
-- Stage 1 feature implementation before Stage 0.5 completion is accepted.
+- Stage 2 Daily Output Log, Stage 3 Manager Dashboard, or later modules.
 - Git push, merge, pull request, or Vercel deployment.
 - Hosted Supabase migration, SQL execution, linking, or database reset.
 - `vercel env pull`, production environment retrieval, or secret display.
