@@ -87,8 +87,10 @@ select extensions.is(
   'T15 [ARTIFACT] full-time-only artifact is hidden from intern'
 );
 select extensions.is(
-  (select count(*)::bigint from public.work_task_artifacts where id='73000000-0000-0000-0000-000000000002'), 0::bigint,
-  'T16 [ARTIFACT] P&C artifact is hidden although parent task is visible'
+  (select count(*)::bigint from public.work_task_artifacts where id='73000000-0000-0000-0000-000000000002')
+  + (select count(*)::bigint from public.work_task_events where event_type='artifact_added' and metadata->>'artifact_id'='73000000-0000-0000-0000-000000000002'),
+  0::bigint,
+  'T16 [ARTIFACT] P&C artifact and its audit metadata are hidden although parent task is visible'
 );
 select extensions.is(
   ieos_stage1_test.affected_rows($q$update public.work_tasks set assigned_to='71000000-0000-0000-0000-000000000003' where id='72000000-0000-0000-0000-000000000001'$q$),
@@ -254,8 +256,10 @@ select extensions.ok(
   'T47 [MANAGED ARTIFACT] manager can classify a restricted artifact'
 );
 select extensions.is(
-   (select count(*)::bigint from public.work_task_artifacts where task_id='72000000-0000-0000-0000-000000000002' and label='Restricted brief'), 0::bigint,
-  'T48 [P&C DEFAULT DENY] manager cannot read P&C artifact without explicit grant'
+   (select count(*)::bigint from public.work_task_artifacts where task_id='72000000-0000-0000-0000-000000000002' and label='Restricted brief')
+   + (select count(*)::bigint from public.work_task_events where task_id='72000000-0000-0000-0000-000000000002' and event_type='artifact_added' and metadata->>'sensitivity'='pc_restricted'),
+  0::bigint,
+  'T48 [P&C DEFAULT DENY] manager cannot read P&C artifact or its audit metadata without explicit grant'
 );
 select extensions.ok(
   ieos_stage1_test.execute_ok($q$select public.supervise_work_task(
@@ -350,4 +354,3 @@ reset role;
 
 select * from extensions.finish();
 rollback;
-

@@ -363,6 +363,19 @@ as $$
   );
 $$;
 
+create or replace function public.fn_wm_task_has_completion_artifact(target_task uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.work_task_artifacts a
+    where a.task_id = target_task and a.artifact_type in ('final', 'evidence')
+  );
+$$;
+
 create or replace function public.fn_wm_next_task_number()
 returns text
 language sql
@@ -504,7 +517,17 @@ create policy work_task_access_grants_select on public.work_task_access_grants
 
 create policy work_task_events_select on public.work_task_events
   for select to authenticated
-  using (public.fn_wm_can_view_task(auth.uid(), task_id));
+  using (
+    public.fn_wm_can_manage_task(auth.uid(), task_id)
+    or (
+      public.fn_wm_can_view_task(auth.uid(), task_id)
+      and event_type <> 'artifact_added'
+    )
+    or (
+      event_type = 'artifact_added'
+      and public.fn_wm_can_view_artifact(auth.uid(), (metadata ->> 'artifact_id')::uuid)
+    )
+  );
 
 create or replace function public.create_work_task(
   p_business_unit_id uuid,
@@ -1015,15 +1038,9 @@ select
     case when t.due_date < current_date and t.status not in ('completed', 'cancelled') then 'OVERDUE' end,
     case when coalesce(activity.activity_days, 0) >= 3
       and t.status not in ('completed', 'cancelled')
-      and not exists (
-        select 1 from public.work_task_artifacts a
-        where a.task_id = t.id and a.artifact_type in ('final', 'evidence')
-      ) then 'STUCK' end,
+      and not public.fn_wm_task_has_completion_artifact(t.id) then 'STUCK' end,
     case when t.status = 'completed' and t.output_required = true
-      and not exists (
-        select 1 from public.work_task_artifacts a
-        where a.task_id = t.id and a.artifact_type in ('final', 'evidence')
-      ) then 'COMPLETED MISSING EVIDENCE' end,
+      and not public.fn_wm_task_has_completion_artifact(t.id) then 'COMPLETED MISSING EVIDENCE' end,
     case when t.status = 'waiting_feedback' then 'WAITING FEEDBACK' end,
     case when t.status = 'blocked' and nullif(btrim(t.current_blocker), '') is not null then 'BLOCKED' end
   ], null)::text[] as attention_flags
@@ -1063,6 +1080,7 @@ revoke all on function public.fn_wm_can_manage_task(uuid, uuid) from public, ano
 revoke all on function public.fn_wm_can_view_task(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.fn_wm_can_update_task(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.fn_wm_can_view_artifact(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.fn_wm_task_has_completion_artifact(uuid) from public, anon, authenticated;
 revoke all on function public.fn_wm_next_task_number() from public, anon, authenticated;
 revoke all on function public.validate_work_task_scope() from public, anon, authenticated;
 revoke all on function public.guard_work_task_completion() from public, anon, authenticated;
