@@ -98,7 +98,8 @@ export type ActivityAction =
   | "approved"
   | "amended"
   | "posted"
-  | "deleted";
+  | "deleted"
+  | "edited";
 
 export type Activity = {
   id: string;
@@ -169,11 +170,34 @@ export type ContentItemStatus =
 export type ContentItemApprovalStatus = "pending" | "approved" | "amend" | null;
 export type ContentPriority = "low" | "medium" | "high" | null;
 
+export type ApprovalCategory = {
+  id: string;
+  name: string;
+  created_at: string;
+};
+
+export type ApprovalActionType =
+  | "submitted"
+  | "approved"
+  | "revision_requested"
+  | "comment"
+  | "edited";
+
+export type ApprovalAction = {
+  id: string;
+  content_item_id: string;
+  actor_id: string | null;
+  action: ApprovalActionType;
+  comment: string | null;
+  created_at: string;
+};
+
 export type ContentItem = {
   id: string;
   business_unit_id: string | null;
   department_id: string | null;
   campaign_id: string | null;
+  approval_category_id: string | null;
   title: string;
   content_type: string | null;
   language: string | null;
