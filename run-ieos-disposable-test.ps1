@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$OutputDirectory,
-  [string]$RequiredAncestor = 'a353df594e740cf423fda2ee1031b8ae0754e9ab',
-  [string]$RequiredBranch = 'codex-ieos-stage0-5-governance',
+  [string]$RequiredAncestor = '5f1bc43506d0e8f72af2c1d684ae7a819d4d72cc',
+  [string]$RequiredBranch = 'codex-ieos-stage1-task-tracker',
   [switch]$SelfTest
 )
 
@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 $ExpectedCliVersion = '2.116.0'
 $Repository = [IO.Path]::GetFullPath($PSScriptRoot)
 $RunId = [guid]::NewGuid().ToString('N')
-$ProjectId = "ieos-stage4-$($RunId.Substring(0,12))"
+$ProjectId = "ieos-stage1-$($RunId.Substring(0,12))"
 $Lab = Join-Path ([IO.Path]::GetTempPath()) $ProjectId
 
 if (-not $OutputDirectory) {
@@ -23,9 +23,11 @@ $ReportPath = Join-Path $OutputDirectory 'ieos-disposable-test-report.md'
 
 $Results = [ordered]@{
   'Environment setup' = 'NOT RUN'
+  'Public migration replay' = 'NOT RUN'
+  'Stage 1 behavioural matrix' = 'NOT RUN'
   'Staging replay 001-008' = 'NOT RUN'
   'Database lint' = 'NOT RUN'
-  'Behavioural security matrix' = 'NOT RUN'
+  'Approval/edit regression' = 'NOT RUN'
   'Cleanup' = 'NOT RUN'
 }
 
@@ -48,6 +50,14 @@ $StagingScripts = @(
   '006_approval_workflow.sql',
   '007_edit_support.sql',
   '008_approval_security_hardening.sql'
+)
+
+$PublicScripts = @(
+  '0001_init.sql',
+  '0002_org_business_unit_team.sql',
+  '0003_auth_access_rls.sql',
+  '0004_content_core.sql',
+  '20260908113917_work_management_foundation.sql'
 )
 
 function Write-Utf8([string]$Path, [string]$Text) {
@@ -130,7 +140,7 @@ function Run-Docker([string[]]$ArgumentList, [string]$LogName, [switch]$AllowFai
 }
 
 function Run-Sql([string]$SqlPath, [string]$LogName) {
-  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage4-*') {
+  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage1-*') {
     throw 'Disposable local database container was not safely resolved.'
   }
   $remotePath = '/tmp/' + (([IO.Path]::GetFileName($SqlPath)) -replace '[^A-Za-z0-9_.-]', '_')
@@ -157,14 +167,14 @@ function Assert-DisposablePath([string]$Path) {
   if (-not $fullPath.StartsWith($tempRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing cleanup outside the Windows temporary directory: $fullPath"
   }
-  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage4-*') {
+  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage1-*') {
     throw "Refusing cleanup of unexpected directory: $fullPath"
   }
 }
 
 function Write-Report([int]$ExitCode) {
   $lines = @(
-    '# IEOS approval/edit disposable test report',
+    '# IEOS Stage 1 task-management disposable test report',
     '',
     "- Repository: ``$Repository``",
     "- Required preserved ancestor: ``$RequiredAncestor``",
@@ -245,6 +255,11 @@ try {
   if ($workingTree.Count -gt 0) {
     throw 'Repository working tree must be clean before disposable acceptance.'
   }
+  foreach ($scriptName in $PublicScripts) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Repository "supabase\migrations\$scriptName"))) {
+      throw "Missing public migration $scriptName"
+    }
+  }
   foreach ($scriptName in $StagingScripts) {
     if (-not (Test-Path -LiteralPath (Join-Path $Repository "supabase\staging\$scriptName"))) {
       throw "Missing staging script $scriptName"
@@ -284,6 +299,21 @@ try {
     $DbContainer = $containerNames[0].Trim()
     $Results['Environment setup'] = "PASS - local Docker/Supabase project $ProjectId; no hosted link"
 
+    $CurrentPhase = 'Public migration replay'
+    foreach ($scriptName in $PublicScripts) {
+      Run-Sql (Join-Path $Repository "supabase\migrations\$scriptName") "public-$scriptName.log" | Out-Null
+    }
+    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1 migration'
+
+    $CurrentPhase = 'Stage 1 behavioural matrix'
+    Run-Sql (Join-Path $Repository 'supabase\tests\support\stage1_work_management_fixtures.sql') 'stage1-fixtures.log' | Out-Null
+    $stage1Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\stage1_work_management_behavioural.sql') 'stage1-behavioural-matrix-60.log'
+    $stage1Tap = Read-Tap $stage1Matrix.Log
+    if ($stage1Tap.Total -ne 60 -or $stage1Tap.Fail -ne 0) {
+      throw "Stage 1 behavioural matrix failed: $($stage1Tap.Pass) passed, $($stage1Tap.Fail) failed, expected 60 tests."
+    }
+    $Results['Stage 1 behavioural matrix'] = 'PASS - 60/60 identity, scope, evidence, completion, attention and audit tests'
+
     $CurrentPhase = 'Staging replay 001-008'
     foreach ($scriptName in $StagingScripts) {
       Run-Sql (Join-Path $Repository "supabase\staging\$scriptName") "replay-$scriptName.log" | Out-Null
@@ -294,14 +324,14 @@ try {
     Run-Supabase @('db', 'lint', '--local', '--fail-on', 'error') 'database-lint.log' | Out-Null
     $Results['Database lint'] = 'PASS - Supabase database lint (error threshold)'
 
-    $CurrentPhase = 'Behavioural security matrix'
+    $CurrentPhase = 'Approval/edit regression'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\008_ieos_staging_fixtures.sql') 'behavioural-fixtures.log' | Out-Null
     $matrix = Run-Sql (Join-Path $Repository 'supabase\tests\008_ieos_approval_edit_behavioural.sql') 'behavioural-matrix-35.log'
     $tap = Read-Tap $matrix.Log
     if ($tap.Total -ne 35 -or $tap.Fail -ne 0) {
       throw "Behavioural matrix failed: $($tap.Pass) passed, $($tap.Fail) failed, expected 35 tests."
     }
-    $Results['Behavioural security matrix'] = 'PASS - 35/35'
+    $Results['Approval/edit regression'] = 'PASS - 35/35'
     $AcceptancePassed = $true
   } finally {
     Pop-Location
@@ -338,7 +368,7 @@ try {
   Write-Report $exitCode
   Write-Host "Report: $ReportPath"
   if ($exitCode -eq 0) {
-    Write-Host 'RESULT: PASS - replay, lint, behavioural tests, and cleanup completed.'
+    Write-Host 'RESULT: PASS - Stage 1 replay, security, regression, lint, and cleanup completed.'
   } elseif ($exitCode -eq 2) {
     Write-Host 'RESULT: TESTS PASSED; CLEANUP FAILED - see report.'
   } else {
