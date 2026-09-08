@@ -357,7 +357,11 @@ try {
       $env:NEXT_PUBLIC_SUPABASE_SCHEMA = 'public'
       $nextStdout = Join-Path $OutputDirectory 'uat-next.log'
       $nextStderr = Join-Path $OutputDirectory 'uat-next-error.log'
-      $NextProcess = Start-Process -FilePath 'npm.cmd' -ArgumentList @('run','dev','--','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
+      $nextExe = Join-Path $Repository 'node_modules\.bin\next.cmd'
+      if (-not (Test-Path -LiteralPath $nextExe)) { throw 'Local Next.js executable is unavailable.' }
+      # Webpack supports the safe local node_modules junction used by this
+      # preserved worktree; Turbopack intentionally rejects links outside its root.
+      $NextProcess = Start-Process -FilePath $nextExe -ArgumentList @('dev','--webpack','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
       $ready = $false
       for ($attempt = 0; $attempt -lt 30; $attempt++) {
         Start-Sleep -Seconds 1
