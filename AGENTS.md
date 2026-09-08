@@ -1,65 +1,66 @@
-# ieta-operating-system
+# IEOS — Authoritative Agent Instructions
 
-Internal company OS for IETA: organises SOPs, work file links, content ideas, and social media content tasks through a full assign→work→submit→approve→post lifecycle, replacing scattered WhatsApp reports and lost Drive links.
+These instructions supersede the repository's earlier demo-first PRD,
+architecture, security, test, deployment, and kickoff instructions wherever
+they conflict.
 
-## ⚠️ READ THIS BEFORE WRITING ANY CODE
-A complete, correct plan for this app is already committed in `/docs`. Do **not** start
-from the project name, the summary above, or your own assumptions — those will lead you to
-build the wrong thing (e.g. a marketing landing page). Open the plan and build from it:
+## Current authority and scope
 
-- `docs/PRD.md`
-- `docs/ARCHITECTURE.md`
-- `docs/DATA_MODEL.md`
-- `docs/INTELLIGENCE_LAYER.md`
-- `docs/AGENTIC_LAYER.md`
-- `docs/SECURITY.md`
-- `docs/TEST_PLAN.md`
+- Work only on the controlled IEOS development branch for
+  `ieta-operating-system`.
+- Do not modify `expenses-tracker-bankrecon` or Operations Hub.
+- The approved product authority is `docs/IEOS_MASTER_PLAN.md`.
+- The execution authority is `docs/EXECUTION_GUARDRAILS.md`.
+- The current permitted phase is recorded in `docs/TASKS.md`.
+- Current permitted phase: Stage 0.5 only until its completion report is
+  accepted. Stage 1 implementation must not start early.
 
-## Build rules (binding — follow in order)
-1. **Read first:** open `docs/PRD.md`, `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, and
-   `docs/TASKS.md` before writing a single line.
-2. **Confirm the plan** back to me in 2–3 lines (the core objects + the one main workflow) BEFORE coding.
-3. **Build the ONE core engine/verb FIRST, working end-to-end.** Every app has a main action —
-   create a proposal, run the quote/simulation, log a change and act on it. Build THAT against the
-   real database in Sprint 1, then breadth. Then build straight through the sprints until the app
-   actually WORKS end-to-end. Do NOT stop after auth + an empty or "Connected" status dashboard, and
-   do NOT ship read-only screens of seeded data — **every button and form must persist to the
-   database and the UI must reflect it. NO dead buttons. Seeded rows are demo placeholders the user
-   can also create/edit/delete.** Commit + push after each sprint; pause for review only once a real
-   person can actually perform the core job.
-4. **Database-first, but don't stop at the database:** lay the data model + core CRUD first (the
-   core must work with the AI switched off), then build the real screens that make it usable.
-5. **This is the real working app** — real forms, lists, detail views, and the end-to-end flow from
-   the PRD's success scenario. Do **NOT** build a marketing/landing page, a front-end-only demo, or
-   a connection-status dashboard.
-6. **Demo-first — no login wall in v1.** The homepage IS the working app (with seed data), reachable by
-   anyone — do NOT redirect to /login or gate the app behind auth yet. Login/signup + per-user lockdown
-   is a LATER "Lock it down" sprint, before real users/data. (Keeps the app demoable + screenshot-able.)
-7. Never put secrets in frontend code.
+## Safety gates
 
-## Deploy & data (binding — this stack is already provisioned)
-- **Deploy by git, never by CLI.** `git add -A && git commit -m "…" && git push` to `main`;
-  Vercel auto-deploys from GitHub. Do NOT run `vercel deploy` / `vercel --prod` with local
-  files — it desyncs git, and the next push silently overwrites your live app.
-- **Commit + push every change.** Git is the source of truth; uncommitted work is lost on
-  the next deploy.
-- **The Supabase database is already provisioned** and its keys are in this project's Vercel
-  env. Pull them locally: `vercel link` then `vercel env pull .env.local`. Don't invent new ones.
-- **Your database is already set up.** The schema from your data model has been applied to
-  this project's Supabase database and committed at `supabase/migrations/0001_init.sql`. Build on
-  the existing tables — **do not recreate them**. To change the schema, add a NEW migration file
-  (`supabase/migrations/0002_*.sql`) and apply it; never edit `0001`.
-- **Commit as your GitHub identity, or Vercel will block the deploy.** Vercel verifies that
-  every commit's author email belongs to your GitHub account. Your machine's default git email
-  often isn't, so the very first local commit gets rejected. Pin this repo's identity once
-  (already correct for your account) — before your first commit:
-  ```
-  git config user.email "214332408+sfchong72@users.noreply.github.com"
-  git config user.name "sfchong72"
-  ```
+- Never push, merge, deploy, or create a pull request without Claire's
+  explicit approval.
+- Never run Vercel deployment commands or change Vercel ownership,
+  integration, domains, or environment variables.
+- Never apply migrations or SQL to hosted Supabase without a separate
+  production-change approval.
+- Never link a disposable environment to a hosted project.
+- Never pull, print, copy, or expose production secret values.
+- Never change GitHub ownership/authentication, Supabase ownership, Vercel
+  ownership, DNS, or Hermes Telegram.
+- Do not reset, discard, delete, or bulk-commit recovered work.
 
-Kickoff prompt: "Read everything in /docs, confirm the plan in 3 lines, then build straight
-through the sprints until the app actually works end-to-end — the PRD's success scenario, not
-just auth + an empty dashboard. The schema is already applied, so pull env with vercel env pull
-and build on the existing tables; commit + push after each sprint to deploy. Stop only when a
-real user can do the core job."
+## Development workflow
+
+1. Record branch, HEAD, and working tree before each stage.
+2. Preserve unique local work before restructuring it.
+3. Work in one bounded stage at a time.
+4. Use additive migrations; do not edit an applied baseline migration.
+5. Replay migrations in a fresh disposable local Supabase/Postgres environment.
+6. Test RLS and actions as authorised, cross-scope, unauthorised, inactive,
+   and anonymous identities.
+7. Run TypeScript, ESLint, build, and applicable behavioural/regression suites.
+8. Produce acceptance and rollback evidence.
+9. Stop for Claire's approval before production review or the next stage.
+
+## Product boundaries
+
+- IEOS is the workforce execution and management system: tasks, daily outputs,
+  evidence links, manager review, files, content, SOPs, and later bounded
+  operational modules.
+- Operations Hub remains the transactional system for students, enrolments,
+  attendance, assessments, fees, finance, Career & Placement, and related
+  records.
+- Generic task updates must not contain sensitive personal data. P&C work may
+  reference only authorised restricted record IDs or restricted file links.
+- Actual passwords must never be stored in IEOS.
+
+## Stage 1 scope after separate approval
+
+The frontend remains limited to Task Tracker, Task Detail, Daily Update, and
+Manager Dashboard across Stages 1–3. Stage 1 implements Task Tracker and Task
+Detail only. No KPI scoring is permitted in Stage 1.
+
+The generic `work_tasks` domain must not overwrite the existing
+marketing-specific `content_tasks` or `content_items` models. Existing work is
+preserved until a tested migration or retirement decision is approved.
+

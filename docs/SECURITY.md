@@ -1,3 +1,10 @@
+# Historical document — superseded
+
+> [!IMPORTANT]
+> The earlier demo-first/permissive-access model is prohibited. Active
+> security work is governed by `IEOS_MASTER_PLAN.md`,
+> `EXECUTION_GUARDRAILS.md`, and `TASKS.md`.
+
 # Security
 
 ## Secret handling

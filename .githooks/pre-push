@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "IEOS SAFETY BLOCK: git push is disabled in the Stage 0.5 controlled workspace." >&2
+echo "Claire's explicit push approval and removal of this repository-local guard are required." >&2
+exit 1
+

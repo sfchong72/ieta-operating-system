@@ -1,3 +1,9 @@
+# Historical document — superseded
+
+> [!IMPORTANT]
+> Retained for recovery context only. Active development is governed by
+> `IEOS_MASTER_PLAN.md`, `EXECUTION_GUARDRAILS.md`, and `TASKS.md`.
+
 # IEOS — Technical Inspection
 
 Repository/database audit performed before any IEOS Phase 1 code was written,

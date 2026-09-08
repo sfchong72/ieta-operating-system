@@ -1,3 +1,11 @@
+# Historical template README — superseded
+
+> [!IMPORTANT]
+> Active IEOS development is governed by `AGENTS.md` and
+> `docs/IEOS_MASTER_PLAN.md`, `docs/EXECUTION_GUARDRAILS.md`, and
+> `docs/TASKS.md`. Do not execute provisioning, push, or deployment guidance
+> below without Claire's explicit approval.
+
 # vibe-stack-supabase
 
 Next.js 15 + Supabase starter for shipping vibe-coded apps fast. Clone, provision, build.

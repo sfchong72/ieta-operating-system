@@ -1,3 +1,9 @@
+# Historical document — superseded
+
+> [!IMPORTANT]
+> Retained for recovery context only. Active testing is governed by
+> `IEOS_MASTER_PLAN.md`, `EXECUTION_GUARDRAILS.md`, and `TASKS.md`.
+
 # Test Plan
 
 ## v1 success scenario (manual)
