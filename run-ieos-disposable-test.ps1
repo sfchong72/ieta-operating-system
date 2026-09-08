@@ -3,6 +3,7 @@ param(
   [string]$OutputDirectory,
   [string]$RequiredAncestor = '5f1bc43506d0e8f72af2c1d684ae7a819d4d72cc',
   [string]$RequiredBranch = 'codex-ieos-stage1-task-tracker',
+  [switch]$InteractiveUat,
   [switch]$SelfTest
 )
 
@@ -28,6 +29,7 @@ $Results = [ordered]@{
   'Staging replay 001-008' = 'NOT RUN'
   'Database lint' = 'NOT RUN'
   'Approval/edit regression' = 'NOT RUN'
+  'Desktop/mobile UAT' = $(if ($InteractiveUat) { 'NOT RUN' } else { 'NOT REQUESTED' })
   'Cleanup' = 'NOT RUN'
 }
 
@@ -40,6 +42,7 @@ $DbContainer = $null
 $SupabaseExe = $null
 $SupabasePrefix = @()
 $TestedHead = 'NOT VERIFIED'
+$NextProcess = $null
 
 $StagingScripts = @(
   '001_mirror_schema.sql',
@@ -332,6 +335,45 @@ try {
       throw "Behavioural matrix failed: $($tap.Pass) passed, $($tap.Fail) failed, expected 35 tests."
     }
     $Results['Approval/edit regression'] = 'PASS - 35/35'
+
+    if ($InteractiveUat) {
+      $CurrentPhase = 'Desktop/mobile UAT'
+      $savedPreference = $ErrorActionPreference
+      try {
+        $ErrorActionPreference = 'Continue'
+        $statusLines = @(& $SupabaseExe @SupabasePrefix status --output env 2>$null)
+        $statusCode = $LASTEXITCODE
+      } finally {
+        $ErrorActionPreference = $savedPreference
+      }
+      if ($statusCode -ne 0) { throw 'Could not read disposable local Supabase status for UAT.' }
+      $localApi = (($statusLines | Where-Object { $_ -match '^API_URL=' } | Select-Object -First 1) -replace '^API_URL="?([^"\r\n]+)"?$', '$1')
+      $localAnonKey = (($statusLines | Where-Object { $_ -match '^ANON_KEY=' } | Select-Object -First 1) -replace '^ANON_KEY="?([^"\r\n]+)"?$', '$1')
+      if (-not $localApi.StartsWith('http://127.0.0.1:') -or -not $localAnonKey) {
+        throw 'Disposable UAT credentials were not resolved as loopback-only.'
+      }
+      $env:NEXT_PUBLIC_SUPABASE_URL = $localApi
+      $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = $localAnonKey
+      $env:NEXT_PUBLIC_SUPABASE_SCHEMA = 'public'
+      $nextStdout = Join-Path $OutputDirectory 'uat-next.log'
+      $nextStderr = Join-Path $OutputDirectory 'uat-next-error.log'
+      $NextProcess = Start-Process -FilePath 'npm.cmd' -ArgumentList @('run','dev','--','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        Start-Sleep -Seconds 1
+        try {
+          $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3201/login' -TimeoutSec 2
+          if ($response.StatusCode -eq 200) { $ready = $true; break }
+        } catch { }
+      }
+      if (-not $ready) { throw "Local UAT app did not start; see $nextStderr" }
+      Write-Host 'LOCAL UAT READY: http://127.0.0.1:3201/login'
+      Write-Host 'Synthetic accounts: director@stage1.ieos.test, manager@stage1.ieos.test, intern@stage1.ieos.test'
+      Write-Host 'Synthetic password: IEOS-Stage1-UAT-Only!'
+      $uatConfirmation = Read-Host 'After desktop/mobile UAT, type PASS to finish and clean up'
+      if ($uatConfirmation -ne 'PASS') { throw 'Interactive UAT was not confirmed as PASS.' }
+      $Results['Desktop/mobile UAT'] = 'PASS - operator confirmed desktop and mobile-width checks against synthetic local data'
+    }
     $AcceptancePassed = $true
   } finally {
     Pop-Location
@@ -344,6 +386,10 @@ try {
   Write-Host "ACCEPTANCE FAILURE: $FailureMessage"
 } finally {
   try {
+    if ($NextProcess -and -not $NextProcess.HasExited) {
+      Stop-Process -Id $NextProcess.Id -Force -ErrorAction Stop
+      $NextProcess.WaitForExit(5000)
+    }
     if ($StackAttempted -and $SupabaseExe) {
       Push-Location $Lab
       try {

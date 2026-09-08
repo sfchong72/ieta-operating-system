@@ -66,6 +66,14 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '71000000-0000-0000-0000-000000000007', 'authenticated', 'authenticated', 'design.staff@stage1.ieos.test', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), false, false),
   ('00000000-0000-0000-0000-000000000000', '71000000-0000-0000-0000-000000000008', 'authenticated', 'authenticated', 'iea.staff@stage1.ieos.test', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), false, false);
 
+update auth.users
+set encrypted_password = extensions.crypt('IEOS-Stage1-UAT-Only!', extensions.gen_salt('bf'))
+where email in (
+  'director@stage1.ieos.test',
+  'manager@stage1.ieos.test',
+  'intern@stage1.ieos.test'
+);
+
 insert into public.profiles (id, email, full_name, is_active) values
   ('71000000-0000-0000-0000-000000000001', 'director@stage1.ieos.test', 'TEST Director', true),
   ('71000000-0000-0000-0000-000000000002', 'manager@stage1.ieos.test', 'TEST Manager', true),
