@@ -12,6 +12,14 @@ export default async function PlannerPage() {
       <PageHeader
         title="Social Media Planner"
         description="Every content item, its platforms, and where it stands."
+        action={
+          <Link
+            href="/planner/new"
+            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            New content item
+          </Link>
+        }
       />
 
       {items.length === 0 ? (

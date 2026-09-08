@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContentItem } from "@/lib/data/content-items";
+import { listApprovalActionsForItem } from "@/lib/data/approval-actions";
 import { WorkflowBadge, ApprovalBadge } from "@/components/planner/status-badges";
 import { PlatformChips, PublishingProgress } from "@/components/planner/platform-progress";
+import { SubmitReviewForm } from "@/components/planner/submit-review-form";
+import { ApprovalHistory } from "@/components/planner/approval-history";
+
+const SUBMITTABLE_STATUSES = ["draft", "in_progress", "revision_required"];
 
 export default async function ContentItemDetailPage({
   params,
@@ -10,15 +15,30 @@ export default async function ContentItemDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const item = await getContentItem(id);
+  const [item, approvalActions] = await Promise.all([
+    getContentItem(id),
+    listApprovalActionsForItem(id),
+  ]);
   if (!item) notFound();
+  const canSubmit = SUBMITTABLE_STATUSES.includes(item.status);
+  const canEdit = canSubmit;
 
   return (
     <div className="max-w-2xl">
       <Link href="/planner" className="text-sm text-neutral-500 hover:underline">
         ← Planner
       </Link>
-      <h1 className="mt-1 text-2xl font-bold tracking-tight">{item.title}</h1>
+      <div className="mt-1 flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight">{item.title}</h1>
+        {canEdit && (
+          <Link
+            href={`/planner/${item.id}/edit`}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50"
+          >
+            Edit
+          </Link>
+        )}
+      </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <WorkflowBadge status={item.status} />
         <ApprovalBadge status={item.approval_status} />
@@ -104,6 +124,17 @@ export default async function ContentItemDetailPage({
           <p className="mt-1 text-neutral-600">{item.remarks}</p>
         </div>
       )}
+
+      {canSubmit && (
+        <div className="mt-6">
+          <SubmitReviewForm contentItemId={item.id} />
+        </div>
+      )}
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold">Approval history</h2>
+        <ApprovalHistory actions={approvalActions} />
+      </div>
     </div>
   );
 }

@@ -15,17 +15,24 @@ const NAV_ITEMS = [
   { href: "/knowledge", label: "Knowledge Base" },
 ];
 
+const APPROVALS_ITEM = { href: "/approvals", label: "My Approvals" };
 const ADMIN_ITEM = { href: "/admin/users", label: "Admin · Users" };
 
 function NavLinks({
   onNavigate,
   isSuperAdmin,
+  isApprover,
 }: {
   onNavigate?: () => void;
   isSuperAdmin: boolean;
+  isApprover: boolean;
 }) {
   const pathname = usePathname();
-  const items = isSuperAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
+  const items = [
+    ...NAV_ITEMS,
+    ...(isApprover ? [APPROVALS_ITEM] : []),
+    ...(isSuperAdmin ? [ADMIN_ITEM] : []),
+  ];
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
       {items.map((item) => {
@@ -76,6 +83,7 @@ export function NavShell({
 }) {
   const [open, setOpen] = useState(false);
   const isSuperAdmin = currentUser.role === "super_admin";
+  const isApprover = currentUser.role === "super_admin" || currentUser.role === "management";
 
   return (
     <div className="min-h-screen md:flex">
@@ -86,7 +94,7 @@ export function NavShell({
           <p className="text-xs text-neutral-500">Inter Excel Operations System</p>
           <p className="mt-1 text-xs font-medium text-neutral-600">IETA — Marketing &amp; Social Media</p>
         </div>
-        <NavLinks isSuperAdmin={isSuperAdmin} />
+        <NavLinks isSuperAdmin={isSuperAdmin} isApprover={isApprover} />
         <UserBadge currentUser={currentUser} />
       </aside>
 
@@ -106,7 +114,7 @@ export function NavShell({
       </div>
       {open && (
         <div id="mobile-nav" className="border-b border-neutral-200 p-4 md:hidden">
-          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} />
+          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} isApprover={isApprover} />
           <UserBadge currentUser={currentUser} />
         </div>
       )}
