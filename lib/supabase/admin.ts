@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { fetchWithJwtClockSkewRetry } from "./retry";
 
 /**
  * Service-role Supabase client. SERVER-ONLY — the `server-only` import above
@@ -23,5 +24,6 @@ export function createAdminClient() {
   }
   return createSupabaseClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: fetchWithJwtClockSkewRetry },
   });
 }

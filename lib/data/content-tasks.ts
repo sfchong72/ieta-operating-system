@@ -1,17 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
-import { withJwtClockSkewRetry } from "@/lib/supabase/retry";
 import type { ContentTask, TaskStatus, ApprovalStatus } from "./types";
 
 export async function listTasks(): Promise<ContentTask[]> {
-  return withJwtClockSkewRetry(async () => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("content_tasks")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data ?? [];
-  });
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_tasks")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function listTasksByIdea(ideaId: string): Promise<ContentTask[]> {

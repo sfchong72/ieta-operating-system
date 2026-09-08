@@ -41,7 +41,9 @@ export type SopInput = {
   content: string | null;
 };
 
-export async function createSop(input: SopInput): Promise<Sop> {
+export async function createSop(
+  input: SopInput & { user_id?: string | null },
+): Promise<Sop> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sops")

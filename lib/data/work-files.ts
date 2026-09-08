@@ -27,3 +27,29 @@ export async function createWorkFile(input: {
   if (error) throw error;
   return data;
 }
+
+export async function getWorkFile(id: string): Promise<WorkFile | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("work_files")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateWorkFile(
+  id: string,
+  input: { label: string | null; url: string; file_type: FileType },
+): Promise<WorkFile> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("work_files")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}

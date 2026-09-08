@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { fetchWithJwtClockSkewRetry } from "@/lib/supabase/retry";
 
 // Handles the redirect from a Supabase magic-link email: exchanges the code
 // for a session, then sends the user into the app.
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         db: { schema: process.env.NEXT_PUBLIC_SUPABASE_SCHEMA || "public" },
+        global: { fetch: fetchWithJwtClockSkewRetry },
         cookies: {
           getAll() {
             return request.cookies.getAll();

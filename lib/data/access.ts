@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { withJwtClockSkewRetry } from "@/lib/supabase/retry";
 import type {
   Profile,
   Role,
@@ -17,41 +16,37 @@ export type CurrentUser = {
 
 /**
  * The logged-in user's profile + role + access grants, or null if signed
- * out. This is the very first query made after a fresh login (called from
- * the (app) layout before anything else renders), so it's the most likely
- * place to hit the PGRST303 "JWT issued at future" clock-skew race —
- * wrapped in a retry rather than silently treating a query error the same
- * as "no profile exists yet", which would otherwise wrongly bounce a real,
- * fully-provisioned user back to /login.
+ * out. Errors on any of the four queries are checked explicitly (not
+ * silently swallowed) — an error here must not be treated the same as "no
+ * profile exists yet", which would wrongly bounce a real, fully-provisioned
+ * user back to /login.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  return withJwtClockSkewRetry(async () => {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
 
-    const [profileRes, roleRes, buAccessRes, deptAccessRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-      supabase.from("user_role_assignment").select("*").eq("profile_id", user.id).maybeSingle(),
-      supabase.from("user_business_unit_access").select("*").eq("profile_id", user.id),
-      supabase.from("user_department_access").select("*").eq("profile_id", user.id),
-    ]);
+  const [profileRes, roleRes, buAccessRes, deptAccessRes] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("user_role_assignment").select("*").eq("profile_id", user.id).maybeSingle(),
+    supabase.from("user_business_unit_access").select("*").eq("profile_id", user.id),
+    supabase.from("user_department_access").select("*").eq("profile_id", user.id),
+  ]);
 
-    for (const res of [profileRes, roleRes, buAccessRes, deptAccessRes]) {
-      if (res.error) throw res.error;
-    }
+  for (const res of [profileRes, roleRes, buAccessRes, deptAccessRes]) {
+    if (res.error) throw res.error;
+  }
 
-    if (!profileRes.data) return null;
+  if (!profileRes.data) return null;
 
-    return {
-      profile: profileRes.data,
-      role: (roleRes.data?.role as Role) ?? null,
-      businessUnitIds: (buAccessRes.data ?? []).map((r) => r.business_unit_id),
-      departmentIds: (deptAccessRes.data ?? []).map((r) => r.department_id),
-    };
-  });
+  return {
+    profile: profileRes.data,
+    role: (roleRes.data?.role as Role) ?? null,
+    businessUnitIds: (buAccessRes.data ?? []).map((r) => r.business_unit_id),
+    departmentIds: (deptAccessRes.data ?? []).map((r) => r.department_id),
+  };
 }
 
 export async function listProfiles(): Promise<Profile[]> {
