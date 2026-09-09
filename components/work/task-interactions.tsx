@@ -22,7 +22,7 @@ function Result({ state }: { state: WorkActionState }) {
 
 export function QuickUpdateForm({ task }: { task: WorkTask }) {
   const [state, action] = useActionState(quickUpdateWorkTaskAction, EMPTY);
-  return <form action={action} className="space-y-3">
+  return <form key={task.updated_at} action={action} className="space-y-3">
     <input type="hidden" name="task_id" value={task.id} />
     <Result state={state} />
     <div className="grid gap-3 sm:grid-cols-2">
@@ -54,7 +54,7 @@ export function CommentForm({ taskId }: { taskId: string }) {
 
 export function SupervisorForm({ task }: { task: WorkTask }) {
   const [state, action] = useActionState(superviseWorkTaskAction, EMPTY);
-  return <form action={action} className="space-y-3"><input type="hidden" name="task_id" value={task.id} /><Result state={state} /><label className="block text-sm font-medium">Comments / feedback<textarea name="feedback" maxLength={2000} rows={3} className={inputClass} /></label><label className="block text-sm font-medium">Next action<textarea name="next_action" maxLength={1000} rows={2} defaultValue={task.next_action ?? ""} className={inputClass} /></label><div className="space-y-2 text-sm"><label className="flex gap-2"><input type="checkbox" name="approve_final" /> Final output reviewed and approved</label>{!task.output_required && <><label className="flex gap-2"><input type="checkbox" name="waive_output" /> Approve no-output waiver</label><input name="waiver_reason" placeholder="Required waiver reason" className={inputClass} /></>}<label className="flex gap-2"><input type="checkbox" name="complete_task" /> Complete task now</label><label className="flex gap-2"><input type="checkbox" name="feedback_management_only" /> Management-only feedback</label></div><SafetyConfirmation /><SubmitButton pendingText="Saving…">Save supervisor review</SubmitButton></form>;
+  return <form key={task.updated_at} action={action} className="space-y-3"><input type="hidden" name="task_id" value={task.id} /><Result state={state} /><label className="block text-sm font-medium">Comments / feedback<textarea name="feedback" maxLength={2000} rows={3} className={inputClass} /></label><label className="block text-sm font-medium">Next action<textarea name="next_action" maxLength={1000} rows={2} defaultValue={task.next_action ?? ""} className={inputClass} /></label><div className="space-y-2 text-sm"><label className="flex gap-2"><input type="checkbox" name="approve_final" /> Final output reviewed and approved</label>{!task.output_required && <><label className="flex gap-2"><input type="checkbox" name="waive_output" /> Approve no-output waiver</label><input name="waiver_reason" placeholder="Required waiver reason" className={inputClass} /></>}<label className="flex gap-2"><input type="checkbox" name="complete_task" /> Complete task now</label><label className="flex gap-2"><input type="checkbox" name="feedback_management_only" /> Management-only feedback</label></div><SafetyConfirmation /><SubmitButton pendingText="Saving…">Save supervisor review</SubmitButton></form>;
 }
 
 function SafetyConfirmation() {
