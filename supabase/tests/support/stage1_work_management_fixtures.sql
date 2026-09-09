@@ -67,7 +67,15 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '71000000-0000-0000-0000-000000000008', 'authenticated', 'authenticated', 'iea.staff@stage1.ieos.test', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), false, false);
 
 update auth.users
-set encrypted_password = extensions.crypt('IEOS-Stage1-UAT-Only!', extensions.gen_salt('bf'))
+set encrypted_password = extensions.crypt('IEOS-Stage1-UAT-Only!', extensions.gen_salt('bf')),
+    confirmation_token = coalesce(confirmation_token, ''),
+    recovery_token = coalesce(recovery_token, ''),
+    email_change_token_new = coalesce(email_change_token_new, ''),
+    email_change = coalesce(email_change, ''),
+    phone_change = coalesce(phone_change, ''),
+    phone_change_token = coalesce(phone_change_token, ''),
+    email_change_token_current = coalesce(email_change_token_current, ''),
+    reauthentication_token = coalesce(reauthentication_token, '')
 where email in (
   'director@stage1.ieos.test',
   'manager@stage1.ieos.test',
