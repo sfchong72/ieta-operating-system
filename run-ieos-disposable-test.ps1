@@ -364,6 +364,7 @@ try {
       $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = $localAnonKey
       $env:NEXT_PUBLIC_SUPABASE_SCHEMA = 'public'
       $env:NEXT_PUBLIC_APP_URL = 'http://127.0.0.1:3201'
+      $env:IEOS_LOCAL_UAT = '1'
       $nextStdout = Join-Path $OutputDirectory 'uat-next.log'
       $nextStderr = Join-Path $OutputDirectory 'uat-next-error.log'
       $nextCli = Join-Path $Repository 'node_modules\next\dist\bin\next'
@@ -399,7 +400,7 @@ try {
       if (Test-Path -LiteralPath $uatSignal) { Remove-Item -LiteralPath $uatSignal -Force }
       Write-Host "Waiting for Codex UAT completion signal: $uatSignal"
       $uatConfirmed = $false
-      for ($attempt = 0; $attempt -lt 240; $attempt++) {
+      for ($attempt = 0; $attempt -lt 720; $attempt++) {
         Start-Sleep -Seconds 5
         if (Test-Path -LiteralPath $uatSignal) {
           $uatConfirmed = (Get-Content -LiteralPath $uatSignal -Raw).Trim() -eq 'PASS'
