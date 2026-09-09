@@ -285,6 +285,14 @@ try {
     $configPath = Join-Path $Lab 'supabase\config.toml'
     $config = Get-Content -LiteralPath $configPath -Raw
     $config = [regex]::Replace($config, '(?m)^project_id\s*=\s*"[^"]+"', "project_id = `"$ProjectId`"")
+    if ($InteractiveUat) {
+      $config = [regex]::Replace($config, '(?m)^site_url\s*=\s*"[^"]+"', 'site_url = "http://127.0.0.1:3201"')
+      $config = [regex]::Replace($config, '(?m)^additional_redirect_urls\s*=\s*\[[^\r\n]*\]', 'additional_redirect_urls = ["http://127.0.0.1:3201/auth/callback"]')
+      if ($config -notmatch '(?m)^site_url\s*=\s*"http://127\.0\.0\.1:3201"$' -or
+          $config -notmatch '(?m)^additional_redirect_urls\s*=\s*\["http://127\.0\.0\.1:3201/auth/callback"\]$') {
+        throw 'Disposable Supabase UAT redirect configuration could not be constrained to port 3201.'
+      }
+    }
     Write-Utf8 $configPath $config
 
     $dockerInfo = Run-Docker @('info', '--format', '{{.ServerVersion}}|{{.OSType}}') 'docker-info.log'
@@ -355,16 +363,29 @@ try {
       $env:NEXT_PUBLIC_SUPABASE_URL = $localApi
       $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = $localAnonKey
       $env:NEXT_PUBLIC_SUPABASE_SCHEMA = 'public'
+      $env:NEXT_PUBLIC_APP_URL = 'http://127.0.0.1:3201'
       $nextStdout = Join-Path $OutputDirectory 'uat-next.log'
       $nextStderr = Join-Path $OutputDirectory 'uat-next-error.log'
-      $nextExe = Join-Path $Repository 'node_modules\.bin\next.cmd'
-      if (-not (Test-Path -LiteralPath $nextExe)) { throw 'Local Next.js executable is unavailable.' }
+      $nextCli = Join-Path $Repository 'node_modules\next\dist\bin\next'
+      $nodeExe = (Get-Command node.exe -ErrorAction Stop).Source
+      if (-not (Test-Path -LiteralPath $nextCli)) { throw 'Local Next.js executable is unavailable.' }
+      $portProbe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 3201)
+      try {
+        $portProbe.Start()
+      } catch {
+        throw 'Local UAT port 3201 is already in use; refusing to reuse an unrelated or stale server.'
+      } finally {
+        $portProbe.Stop()
+      }
       # This Next.js version uses Webpack by default when --turbopack is absent.
       # Webpack supports the safe node_modules junction used by this worktree.
-      $NextProcess = Start-Process -FilePath $nextExe -ArgumentList @('dev','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
+      # Launch Node directly so cleanup owns the actual development-server process,
+      # rather than only the transient next.cmd wrapper.
+      $NextProcess = Start-Process -FilePath $nodeExe -ArgumentList @($nextCli,'dev','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
       $ready = $false
       for ($attempt = 0; $attempt -lt 30; $attempt++) {
         Start-Sleep -Seconds 1
+        if ($NextProcess.HasExited) { break }
         try {
           $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3201/login' -TimeoutSec 2
           if ($response.StatusCode -eq 200) { $ready = $true; break }
