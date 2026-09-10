@@ -17,6 +17,7 @@ export type WorkTask = {
   completed_at: string | null; output_waived: boolean; output_waiver_reason: string | null;
   output_waived_by: string | null; output_waived_at: string | null; final_approved_by: string | null;
   final_approved_at: string | null; row_version: number; created_at: string; updated_at: string;
+  last_activity_at: string | null;
 };
 
 export type WorkTaskAttention = Pick<WorkTask, "id" | "task_number" | "title" | "assigned_to" | "business_unit_id" | "department_id" | "priority" | "status" | "progress_percent" | "current_blocker" | "due_date" | "output_required" | "task_sensitivity"> & { meaningful_working_days: number; attention_flags: string[] };
@@ -24,6 +25,19 @@ export type WorkTaskArtifact = { id: string; task_id: string; added_by: string; 
 export type WorkTaskComment = { id: string; task_id: string; author_id: string; comment_kind: "comment" | "supervisor_feedback"; audience: "participants" | "management_only"; body: string; created_at: string };
 export type WorkTaskUpdate = { id: string; task_id: string; created_by: string; status: WorkStatus; progress_percent: number; blocker_or_help: string | null; is_meaningful: boolean; created_at: string };
 export type WorkAssignee = { profile_id: string; full_name: string; role: string; department_id: string };
+
+export type DailyWorkUpdate = {
+  id: string; task_id: string; staff_id: string; work_date: string;
+  what_done_today: string; quantity: string | null; result_or_output: string;
+  deliverable_completed: boolean; artifact_id: string | null;
+  blocker_or_help: string | null; created_at: string;
+};
+
+export type DailyUpdateReview = {
+  id: string; daily_update_id: string; reviewer_id: string;
+  review_status: "checked" | "correction_required" | "approved";
+  supervisor_comment: string | null; created_at: string;
+};
 
 export function filterWorkTasks<T extends Pick<WorkTask, "title" | "task_number" | "project_reference" | "status" | "department_id">>(tasks: T[], filters: { q?: string; status?: string; department?: string }): T[] {
   const query = filters.q?.trim().toLocaleLowerCase() ?? "";
