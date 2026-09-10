@@ -29,7 +29,7 @@ approval to begin the next phase.
 - [x] Re-run existing application and disposable acceptance gates.
 - [x] Produce Stage 0.5 completion report.
 
-## Stage 1 — approved; local implementation only
+## Stage 1 — complete and accepted
 
 - [x] Generate an additive local migration for the generic work-management
   foundation.
@@ -38,7 +38,19 @@ approval to begin the next phase.
 - [x] Implement task updates, comments, artifacts, and events foundation.
 - [x] Enforce completion evidence or an approved waiver.
 - [x] Implement the approved attention flags.
-- [ ] Run disposable replay, security matrix, regression, typecheck, lint,
+- [x] Run disposable replay, security matrix, regression, typecheck, lint,
   build, and manual UAT.
-- [ ] Produce Stage 1 acceptance and rollback report.
+- [x] Produce Stage 1 acceptance and rollback report.
+
+## Stage 2 — approved; local implementation only
+
+- [ ] Add immutable `daily_work_updates` and append-only
+  `daily_update_reviews`.
+- [ ] Link updates to `work_tasks` and evidence to `task_artifacts`.
+- [ ] Add atomic `work_tasks.last_activity_at` maintenance.
+- [ ] Support distinct working-day activity for STUCK detection.
+- [ ] Implement the simple mobile-first Daily Update UI and supervisor review.
+- [ ] Run disposable replay, security matrix, regression, typecheck, lint,
+  build, desktop/mobile UAT, and cleanup.
+- [ ] Produce Stage 2 completion/UAT and rollback report.
 

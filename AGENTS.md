@@ -12,9 +12,9 @@ they conflict.
 - The approved product authority is `docs/IEOS_MASTER_PLAN.md`.
 - The execution authority is `docs/EXECUTION_GUARDRAILS.md`.
 - The current permitted phase is recorded in `docs/TASKS.md`.
-- Stage 0.5 is complete and accepted. Current permitted phase: Stage 1 Task
-  Tracker + Task Detail only, on `codex-ieos-stage1-task-tracker`.
-- Stop after the Stage 1 completion/UAT report. Stage 2 is not authorised.
+- Stages 0, 0.5, and 1 are complete and accepted. Current permitted phase:
+  Stage 2 Daily Output Log only, on `codex-ieos-stage2-daily-output`.
+- Stop after the Stage 2 completion/UAT report. Stage 3 is not authorised.
 
 ## Safety gates
 
@@ -55,13 +55,18 @@ they conflict.
   reference only authorised restricted record IDs or restricted file links.
 - Actual passwords must never be stored in IEOS.
 
-## Approved Stage 1 scope
+## Approved Stage 2 scope
 
 The frontend remains limited to Task Tracker, Task Detail, Daily Update, and
-Manager Dashboard across Stages 1–3. Stage 1 implements Task Tracker and Task
-Detail only. No KPI scoring is permitted in Stage 1.
+Manager Dashboard across Stages 1–3. Stage 2 activates the deliberately simple,
+mobile-first Daily Update workflow only. Stage 3 Manager Dashboard and KPI
+scoring remain prohibited.
 
 The generic `work_tasks` domain must not overwrite the existing
 marketing-specific `content_tasks` or `content_items` models. Existing work is
 preserved until a tested migration or retirement decision is approved.
+
+Daily staff submissions and supervisor review events are append-only. Evidence
+for a declared completed deliverable must create or reference a permitted task
+artifact. Authenticated identity, not typed names, owns every submission.
 

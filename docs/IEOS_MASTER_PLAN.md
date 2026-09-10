@@ -1,8 +1,7 @@
 # IEOS Authoritative Staged Product Plan
 
-Status: Stage 0 and Stage 0.5 accepted; Stage 1 Task Tracker + Task Detail is
-authorised for local implementation and validation only. Stage 2 is not
-authorised.
+Status: Stages 0, 0.5, and 1 accepted; Stage 2 Daily Output Log is authorised
+for local implementation and validation only. Stage 3 is not authorised.
 
 This plan supersedes the repository's earlier demo-first product plan wherever
 they conflict. Historical documents remain available for recovery and context.
@@ -97,12 +96,13 @@ Artifact visibility must be enforced by database policy as well as UI filtering.
 14. Import / Migration Tools.
 15. Future enhancements only after the foundation is stable.
 
-## Stage 1 proposed technical scope
+## Stage 2 approved technical scope
 
-Stage 1 introduces a separate generic `work_tasks` domain plus bounded
-supporting records for quick updates, comments, artifacts, scoped grants, and
-immutable audit events. Legacy `content_tasks` and `content_items` remain
-unchanged.
+Stage 2 adds immutable `daily_work_updates`, append-only
+`daily_update_reviews`, task and artifact linkage, and an atomic
+`work_tasks.last_activity_at` update. A completed-deliverable declaration
+requires a permitted evidence link. Distinct working-day activity supports the
+existing STUCK rule. Legacy `content_tasks` and `content_items` remain unchanged.
 
 Minimum role behaviour:
 
