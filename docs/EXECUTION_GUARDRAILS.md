@@ -5,26 +5,26 @@ repository. If a historical document conflicts with it, this document wins.
 
 ## Controlled workspace
 
-- Use `codex-ieos-stage2-daily-output` for the approved Stage 2 scope.
+- Use `codex-ieos-stage3-manager-dashboard` for the approved Stage 3 scope.
 - The pre-governance state is preserved outside the repository as a ZIP, Git
   bundle, exact file tree, and manifest.
 - Do not let Hermes and Codex edit this worktree concurrently.
 - Repository-local push protection must remain enabled until Claire explicitly
   authorises a push.
 
-## Allowed in Stage 2
+## Allowed in Stage 3
 
 - Read repository code, history, and documentation.
 - Preserve local files and refs.
-- Implement Daily Output Log only: immutable staff submissions, append-only
-  supervisor reviews, evidence/artifact linkage, atomic task activity tracking,
-  and distinct-working-day support for STUCK detection.
+- Implement Manager Dashboard and Needs Attention only: canonical attention
+  summaries, scoped team workload, daily output review, supervisor bottleneck,
+  management filters, and supporting indexes.
 - Run local typecheck, lint, build, and disposable tests.
 - Produce reports.
 
 ## Prohibited
 
-- Stage 3 Manager Dashboard or later modules.
+- Stage 4 Master File Register or later modules.
 - Git push, merge, pull request, or Vercel deployment.
 - Hosted Supabase migration, SQL execution, linking, or database reset.
 - `vercel env pull`, production environment retrieval, or secret display.

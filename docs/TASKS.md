@@ -42,15 +42,26 @@ approval to begin the next phase.
   build, and manual UAT.
 - [x] Produce Stage 1 acceptance and rollback report.
 
-## Stage 2 — approved; local implementation only
+## Stage 2 — complete and accepted
 
-- [ ] Add immutable `daily_work_updates` and append-only
+- [x] Add immutable `daily_work_updates` and append-only
   `daily_update_reviews`.
-- [ ] Link updates to `work_tasks` and evidence to `task_artifacts`.
-- [ ] Add atomic `work_tasks.last_activity_at` maintenance.
-- [ ] Support distinct working-day activity for STUCK detection.
-- [ ] Implement the simple mobile-first Daily Update UI and supervisor review.
-- [ ] Run disposable replay, security matrix, regression, typecheck, lint,
+- [x] Link updates to `work_tasks` and evidence to `task_artifacts`.
+- [x] Add atomic `work_tasks.last_activity_at` maintenance.
+- [x] Support distinct working-day activity for STUCK detection.
+- [x] Implement the simple mobile-first Daily Update UI and supervisor review.
+- [x] Run disposable replay, security matrix, regression, typecheck, lint,
   build, desktop/mobile UAT, and cleanup.
-- [ ] Produce Stage 2 completion/UAT and rollback report.
+- [x] Produce Stage 2 completion/UAT and rollback report.
+
+## Stage 3 — approved; local implementation only
+
+- [ ] Add server-side canonical attention and supervisor-bottleneck summaries.
+- [ ] Add security-preserving team workload and daily-output summaries.
+- [ ] Implement Manager Dashboard and enhanced Needs Attention only.
+- [ ] Add business-unit, department, assignee, project, status, flag, and date filters.
+- [ ] Verify scoped aggregates reveal no inaccessible rows or counts.
+- [ ] Run Stage 1/2 regressions, Stage 3 matrix, typecheck, lint, build,
+  desktop/mobile UAT, and cleanup.
+- [ ] Produce Stage 3 completion/UAT and rollback report.
 
