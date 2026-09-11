@@ -406,7 +406,9 @@ try {
       # rather than only the transient next.cmd wrapper.
       $NextProcess = Start-Process -FilePath $nodeExe -ArgumentList @($nextCli,'dev','--hostname','127.0.0.1','--port','3201') -WorkingDirectory $Repository -WindowStyle Hidden -PassThru -RedirectStandardOutput $nextStdout -RedirectStandardError $nextStderr
       $ready = $false
-      for ($attempt = 0; $attempt -lt 30; $attempt++) {
+      # A cold Windows/Webpack start can spend more than 30 seconds compiling
+      # middleware and the login route even after Next reports itself ready.
+      for ($attempt = 0; $attempt -lt 90; $attempt++) {
         Start-Sleep -Seconds 1
         if ($NextProcess.HasExited) { break }
         try {
@@ -414,7 +416,7 @@ try {
           if ($response.StatusCode -eq 200) { $ready = $true; break }
         } catch { }
       }
-      if (-not $ready) { throw "Local UAT app did not start; see $nextStderr" }
+      if (-not $ready) { throw "Local UAT app did not start; see $nextStdout and $nextStderr" }
       Write-Host 'LOCAL UAT READY: http://127.0.0.1:3201/login'
       Write-Host 'Synthetic accounts: director@stage1.ieos.test, manager@stage1.ieos.test, intern@stage1.ieos.test'
       Write-Host 'Synthetic password: IEOS-Stage1-UAT-Only!'
