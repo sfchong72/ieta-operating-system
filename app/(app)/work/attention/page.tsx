@@ -1,14 +1,23 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/data/access";
-import { listDepartments } from "@/lib/data/departments";
-import { listAttentionTasks, listWorkAssignees, listWorkTasks } from "@/lib/data/work-management";
+import { AttentionList } from "@/components/manager-dashboard/attention-list";
+import { DashboardFilterForm } from "@/components/manager-dashboard/dashboard-filters";
 import { PageHeader } from "@/components/ui";
-import { WorkTaskList } from "@/components/work/work-task-list";
+import { getCurrentUser } from "@/lib/data/access";
+import { listBusinessUnits } from "@/lib/data/business-units";
+import { listDepartments } from "@/lib/data/departments";
+import { listWorkAssignees } from "@/lib/data/work-management";
+import { listDashboardAttention, listDashboardProjects } from "@/lib/data/work-dashboard";
+import type { DashboardFilters } from "@/lib/work-management";
 
-export default async function NeedsAttentionPage() {
-  const user = await getCurrentUser();
-  if (!user || !["super_admin", "management"].includes(user.role ?? "")) redirect("/work");
-  const [attention, allTasks, departments, assignees] = await Promise.all([listAttentionTasks(), listWorkTasks(), listDepartments(), listWorkAssignees()]);
-  const ids = new Set(attention.map((item) => item.id));
-  return <div><PageHeader title="Needs Attention" description="Overdue, stuck, blocked, waiting-feedback and evidence exceptions." /><WorkTaskList tasks={allTasks.filter((task) => ids.has(task.id))} attentionById={new Map(attention.map((item) => [item.id, item]))} assigneeById={new Map(assignees.map((item) => [item.profile_id, item.full_name]))} departmentById={new Map(departments.map((item) => [item.id, item.name]))} emptyTitle="No tasks currently need attention." /></div>;
+function first(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
+
+export default async function NeedsAttentionPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
+  if (!user?.canViewWorkDashboard) redirect("/work");
+  const filters: DashboardFilters = { businessUnit: first(params.businessUnit), department: first(params.department), assignee: first(params.assignee), project: first(params.project), status: first(params.status), attention: first(params.attention), dateFrom: first(params.dateFrom), dateTo: first(params.dateTo) };
+  const [attention, businessUnits, departments, assignees, projects] = await Promise.all([listDashboardAttention(filters), listBusinessUnits(), listDepartments(), listWorkAssignees(), listDashboardProjects()]);
+  const uniqueAssignees = Array.from(new Map(assignees.map((person) => [person.profile_id, person])).values());
+  const names = new Map(uniqueAssignees.map((person) => [person.profile_id, person.full_name]));
+  names.set(user.profile.id, user.profile.full_name ?? user.profile.email);
+  return <div className="mx-auto max-w-[1500px]"><PageHeader title="Needs Attention" description="Overdue, stuck, evidence, blocker, feedback, missing-update and supervisor-review exceptions." /><DashboardFilterForm values={filters} businessUnits={businessUnits} departments={departments} assignees={uniqueAssignees} projects={projects} resetHref="/work/attention" /><AttentionList tasks={attention} assigneeNames={names} departmentNames={new Map(departments.map((item) => [item.id, item.name]))} /></div>;
 }

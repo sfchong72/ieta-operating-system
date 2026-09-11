@@ -7,7 +7,6 @@ import { signOutAction } from "@/lib/actions/auth";
 import type { CurrentUser } from "@/lib/data/access";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
   { href: "/work", label: "My Work" },
   { href: "/daily-updates", label: "Daily Update" },
   { href: "/planner", label: "Planner" },
@@ -29,13 +28,16 @@ function NavLinks({
   onNavigate,
   isSuperAdmin,
   isApprover,
+  canViewWorkDashboard,
 }: {
   onNavigate?: () => void;
   isSuperAdmin: boolean;
   isApprover: boolean;
+  canViewWorkDashboard: boolean;
 }) {
   const pathname = usePathname();
   const items = [
+    ...(canViewWorkDashboard ? [{ href: "/dashboard", label: "Dashboard" }] : []),
     ...NAV_ITEMS,
     ...(isApprover ? TEAM_WORK_ITEMS : []),
     ...(isApprover ? [APPROVALS_ITEM] : []),
@@ -102,7 +104,7 @@ export function NavShell({
           <p className="text-xs text-neutral-500">Inter Excel Operations System</p>
           <p className="mt-1 text-xs font-medium text-neutral-600">IETA — Marketing &amp; Social Media</p>
         </div>
-        <NavLinks isSuperAdmin={isSuperAdmin} isApprover={isApprover} />
+        <NavLinks isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} />
         <UserBadge currentUser={currentUser} />
       </aside>
 
@@ -122,7 +124,7 @@ export function NavShell({
       </div>
       {open && (
         <div id="mobile-nav" className="border-b border-neutral-200 p-4 md:hidden">
-          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} isApprover={isApprover} />
+          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} />
           <UserBadge currentUser={currentUser} />
         </div>
       )}

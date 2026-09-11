@@ -1,0 +1,7 @@
+import type { DashboardWorkload } from "@/lib/work-management";
+import { humanise } from "@/components/work/work-ui";
+
+export function WorkloadTable({ rows, assigneeNames }: { rows: DashboardWorkload[]; assigneeNames: Map<string, string> }) {
+  if (!rows.length) return <p className="text-sm text-neutral-500">No workload data matches these filters.</p>;
+  return <div className="overflow-x-auto rounded-lg border border-neutral-200"><table className="w-full min-w-[820px] text-left text-sm"><thead className="bg-neutral-50 text-xs uppercase text-neutral-500"><tr><th className="px-4 py-3">Staff / intern</th><th className="px-4 py-3">Active</th><th className="px-4 py-3">Overdue</th><th className="px-4 py-3">Stuck</th><th className="px-4 py-3">Waiting feedback</th><th className="px-4 py-3">Completed this week</th><th className="px-4 py-3">Updates this week</th></tr></thead><tbody className="divide-y divide-neutral-200">{rows.map((row) => <tr key={row.assigned_to}><td className="px-4 py-3"><p className="font-medium">{assigneeNames.get(row.assigned_to) ?? "Assigned user"}</p><p className="mt-1 text-xs text-neutral-500">{humanise(row.workload_signal)}</p></td><td className="px-4 py-3 font-semibold">{row.active_tasks}</td><td className="px-4 py-3">{row.overdue_tasks}</td><td className="px-4 py-3">{row.stuck_tasks}</td><td className="px-4 py-3">{row.waiting_feedback}</td><td className="px-4 py-3">{row.completed_this_week}</td><td className="px-4 py-3">{row.updates_this_week}</td></tr>)}</tbody></table></div>;
+}
