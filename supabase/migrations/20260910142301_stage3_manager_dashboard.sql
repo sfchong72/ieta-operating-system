@@ -116,6 +116,18 @@ as $$
   where singleton = true;
 $$;
 
+create or replace function public.fn_wm_can_audit_dashboard_grants(subject_uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select subject_uid = auth.uid()
+    and public.fn_wm_is_active(subject_uid)
+    and public.fn_wm_role_of(subject_uid) = 'super_admin';
+$$;
+
 create or replace function public.touch_work_task()
 returns trigger
 language plpgsql
@@ -145,7 +157,7 @@ create policy work_dashboard_access_grants_select on public.work_dashboard_acces
   for select to authenticated
   using (
     profile_id = (select auth.uid())
-    or public.fn_wm_role_of((select auth.uid())) = 'super_admin'
+    or public.fn_wm_can_audit_dashboard_grants((select auth.uid()))
   );
 
 drop view public.work_task_attention;
@@ -456,6 +468,7 @@ revoke all on function public.fn_wm_business_date() from public, anon, authentic
 revoke all on function public.fn_wm_working_days_elapsed(date, date) from public, anon, authenticated;
 revoke all on function public.fn_wm_can_view_dashboard(uuid) from public, anon, authenticated;
 revoke all on function public.fn_wm_supervisor_review_threshold() from public, anon, authenticated;
+revoke all on function public.fn_wm_can_audit_dashboard_grants(uuid) from public, anon, authenticated;
 revoke all on function public.get_work_dashboard_team_workload(uuid, uuid, uuid, text, text, text, date, date) from public, anon;
 revoke all on function public.get_work_dashboard_missing_updates_today(uuid, uuid, uuid, text) from public, anon;
 revoke all on function public.list_work_dashboard_projects() from public, anon;
@@ -465,6 +478,7 @@ grant execute on function public.fn_wm_business_date() to authenticated;
 grant execute on function public.fn_wm_working_days_elapsed(date, date) to authenticated;
 grant execute on function public.fn_wm_can_view_dashboard(uuid) to authenticated;
 grant execute on function public.fn_wm_supervisor_review_threshold() to authenticated;
+grant execute on function public.fn_wm_can_audit_dashboard_grants(uuid) to authenticated;
 grant execute on function public.get_work_dashboard_team_workload(uuid, uuid, uuid, text, text, text, date, date) to authenticated;
 grant execute on function public.get_work_dashboard_missing_updates_today(uuid, uuid, uuid, text) to authenticated;
 grant execute on function public.list_work_dashboard_projects() to authenticated;
