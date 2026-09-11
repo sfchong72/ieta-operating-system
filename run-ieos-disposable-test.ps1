@@ -2,7 +2,7 @@
 param(
   [string]$OutputDirectory,
   [string]$RequiredAncestor = 'fe20311f059b0e3f06223420147f9f81f9741daf',
-  [string]$RequiredBranch = 'codex-ieos-stage2-daily-output',
+  [string]$RequiredBranch = 'codex-ieos-stage3-manager-dashboard',
   [switch]$InteractiveUat,
   [switch]$SelfTest
 )
@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $ExpectedCliVersion = '2.116.0'
 $Repository = [IO.Path]::GetFullPath($PSScriptRoot)
 $RunId = [guid]::NewGuid().ToString('N')
-$ProjectId = "ieos-stage2-$($RunId.Substring(0,12))"
+$ProjectId = "ieos-stage3-$($RunId.Substring(0,12))"
 $Lab = Join-Path ([IO.Path]::GetTempPath()) $ProjectId
 
 if (-not $OutputDirectory) {
@@ -27,6 +27,7 @@ $Results = [ordered]@{
   'Public migration replay' = 'NOT RUN'
   'Stage 1 behavioural matrix' = 'NOT RUN'
   'Stage 2 behavioural matrix' = 'NOT RUN'
+  'Stage 3 dashboard matrix' = 'NOT RUN'
   'Staging replay 001-008' = 'NOT RUN'
   'Database lint' = 'NOT RUN'
   'Approval/edit regression' = 'NOT RUN'
@@ -63,6 +64,7 @@ $PublicScripts = @(
   '0004_content_core.sql',
   '20260908113917_work_management_foundation.sql'
   '20260910101811_stage2_daily_output_log.sql'
+  '20260910142301_stage3_manager_dashboard.sql'
 )
 
 function Write-Utf8([string]$Path, [string]$Text) {
@@ -145,7 +147,7 @@ function Run-Docker([string[]]$ArgumentList, [string]$LogName, [switch]$AllowFai
 }
 
 function Run-Sql([string]$SqlPath, [string]$LogName) {
-  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage2-*') {
+  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage3-*') {
     throw 'Disposable local database container was not safely resolved.'
   }
   $remotePath = '/tmp/' + (([IO.Path]::GetFileName($SqlPath)) -replace '[^A-Za-z0-9_.-]', '_')
@@ -172,14 +174,14 @@ function Assert-DisposablePath([string]$Path) {
   if (-not $fullPath.StartsWith($tempRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing cleanup outside the Windows temporary directory: $fullPath"
   }
-  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage2-*') {
+  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage3-*') {
     throw "Refusing cleanup of unexpected directory: $fullPath"
   }
 }
 
 function Write-Report([int]$ExitCode) {
   $lines = @(
-    '# IEOS Stage 2 daily-output disposable test report',
+    '# IEOS Stage 3 manager-dashboard disposable test report',
     '',
     "- Repository: ``$Repository``",
     "- Required preserved ancestor: ``$RequiredAncestor``",
@@ -316,7 +318,7 @@ try {
     foreach ($scriptName in $PublicScripts) {
       Run-Sql (Join-Path $Repository "supabase\migrations\$scriptName") "public-$scriptName.log" | Out-Null
     }
-    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1 and Stage 2 migrations'
+    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1, Stage 2, and Stage 3 migrations'
 
     $CurrentPhase = 'Stage 1 behavioural matrix'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\stage1_work_management_fixtures.sql') 'stage1-fixtures.log' | Out-Null
@@ -335,6 +337,15 @@ try {
       throw "Stage 2 behavioural matrix failed: $($stage2Tap.Pass) passed, $($stage2Tap.Fail) failed, expected 35 tests."
     }
     $Results['Stage 2 behavioural matrix'] = 'PASS - 35/35 daily-output identity, scope, evidence, immutability, review and activity tests'
+
+    $CurrentPhase = 'Stage 3 dashboard matrix'
+    Run-Sql (Join-Path $Repository 'supabase\tests\support\stage3_manager_dashboard_fixtures.sql') 'stage3-fixtures.log' | Out-Null
+    $stage3Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\stage3_manager_dashboard_behavioural.sql') 'stage3-dashboard-matrix-60.log'
+    $stage3Tap = Read-Tap $stage3Matrix.Log
+    if ($stage3Tap.Total -ne 60 -or $stage3Tap.Fail -ne 0) {
+      throw "Stage 3 dashboard matrix failed: $($stage3Tap.Pass) passed, $($stage3Tap.Fail) failed, expected 60 tests."
+    }
+    $Results['Stage 3 dashboard matrix'] = 'PASS - 60/60 dashboard access, canonical flags, working-day, workload, review and aggregate-leakage tests'
 
     $CurrentPhase = 'Staging replay 001-008'
     foreach ($scriptName in $StagingScripts) {
@@ -462,7 +473,7 @@ try {
   Write-Report $exitCode
   Write-Host "Report: $ReportPath"
   if ($exitCode -eq 0) {
-    Write-Host 'RESULT: PASS - Stage 2 replay, security, regression, lint, and cleanup completed.'
+    Write-Host 'RESULT: PASS - Stage 3 replay, security, regression, lint, and cleanup completed.'
   } elseif ($exitCode -eq 2) {
     Write-Host 'RESULT: TESTS PASSED; CLEANUP FAILED - see report.'
   } else {
