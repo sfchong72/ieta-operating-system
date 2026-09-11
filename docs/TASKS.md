@@ -54,14 +54,14 @@ approval to begin the next phase.
   build, desktop/mobile UAT, and cleanup.
 - [x] Produce Stage 2 completion/UAT and rollback report.
 
-## Stage 3 — approved; local implementation only
+## Stage 3 — complete; awaiting acceptance
 
-- [ ] Add server-side canonical attention and supervisor-bottleneck summaries.
-- [ ] Add security-preserving team workload and daily-output summaries.
-- [ ] Implement Manager Dashboard and enhanced Needs Attention only.
-- [ ] Add business-unit, department, assignee, project, status, flag, and date filters.
-- [ ] Verify scoped aggregates reveal no inaccessible rows or counts.
-- [ ] Run Stage 1/2 regressions, Stage 3 matrix, typecheck, lint, build,
+- [x] Add server-side canonical attention and supervisor-bottleneck summaries.
+- [x] Add security-preserving team workload and daily-output summaries.
+- [x] Implement Manager Dashboard and enhanced Needs Attention only.
+- [x] Add business-unit, department, assignee, project, status, flag, and date filters.
+- [x] Verify scoped aggregates reveal no inaccessible rows or counts.
+- [x] Run Stage 1/2 regressions, Stage 3 matrix, typecheck, lint, build,
   desktop/mobile UAT, and cleanup.
-- [ ] Produce Stage 3 completion/UAT and rollback report.
+- [x] Produce Stage 3 completion/UAT and rollback report.
 
