@@ -647,7 +647,7 @@ revoke all on function public.grant_marketing_lead_access(uuid,uuid,uuid,boolean
 revoke all on function public.revoke_marketing_lead_access(uuid,uuid,uuid) from public,anon;
 revoke all on function public.create_lead_followup_task(uuid,date,text) from public,anon;
 
-grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_can_manage_lead(uuid,uuid),
+grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_can_view_lead(uuid,uuid),public.fn_ml_can_manage_lead(uuid,uuid),
   public.fn_ml_can_interact(uuid,uuid),public.search_marketing_leads(text,uuid,uuid,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,timestamptz,boolean,boolean,uuid,integer),
   public.get_marketing_lead_duplicate_warnings(uuid),public.get_marketing_lead_summary(uuid),
   public.get_marketing_lead_audit(uuid),
