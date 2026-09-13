@@ -39,12 +39,12 @@ export function EmptyState({
   href?: string;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-neutral-300 p-10 text-center">
-      <p className="text-sm text-neutral-500">{title}</p>
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center shadow-sm">
+      <p className="text-sm leading-6 text-slate-500">{title}</p>
       {cta && href && (
         <Link
           href={href}
-          className="mt-4 inline-block rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-700"
         >
           {cta}
         </Link>
@@ -63,12 +63,12 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+    <div className="mb-7 flex flex-wrap items-start justify-between gap-4 sm:gap-6">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{title}</h1>
+        {description && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</p>}
       </div>
-      {action}
+      {action && <div className="flex w-full flex-wrap gap-2 sm:w-auto">{action}</div>}
     </div>
   );
 }

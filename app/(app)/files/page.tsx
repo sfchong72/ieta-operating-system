@@ -36,7 +36,7 @@ export default async function FileRegisterPage({ searchParams }: { searchParams:
   ]);
   return <div className="mx-auto max-w-[1500px]">
     <PageHeader title="File Register" description="Find the governed current master, its owner, scope and external link." action={<div className="flex gap-2">{canManage && <Link href="/files/review" className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium">Review / cleanup</Link>}{canManage && <Link href="/files/new" className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white">Add file</Link>}</div>} />
-    <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">IEOS stores governed metadata and links only. Google Drive, Canva and other provider contents and permissions remain in their source systems.</div>
+    <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">Inter Excel Operating System stores governed metadata and links only. Google Drive, Canva and other provider contents and permissions remain in their source systems.</div>
     <MasterFileFiltersForm values={filters} businessUnits={businessUnits} departments={departments} categories={categories} owners={owners} projects={projects} />
     <p className="mb-3 text-sm text-neutral-500">{files.length} visible record{files.length === 1 ? "" : "s"}. Current files are shown first.</p>
     <MasterFileList files={files} emptyText="No permitted file records match these filters." />

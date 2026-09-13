@@ -13,6 +13,6 @@ export default async function AddMasterFilePage() {
   const [businessUnits, departments, categories, owners, tasks] = await Promise.all([
     listBusinessUnits(), listDepartments(), listMasterFileCategories(), listWorkAssignees(), listWorkTasks(),
   ]);
-  return <div className="mx-auto max-w-5xl"><PageHeader title="Add File" description="Register the governed master link and ownership metadata. No file contents are copied into IEOS." /><MasterFileForm businessUnits={businessUnits} departments={departments} categories={categories} owners={owners} tasks={tasks} canSetPc={user.role === "super_admin"} /></div>;
+  return <div className="mx-auto max-w-5xl"><PageHeader title="Add File" description="Register the governed master link and ownership metadata. No file contents are copied into Inter Excel Operating System." /><MasterFileForm businessUnits={businessUnits} departments={departments} categories={categories} owners={owners} tasks={tasks} canSetPc={user.role === "super_admin"} /></div>;
 }
 

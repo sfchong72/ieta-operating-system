@@ -23,7 +23,7 @@ export default async function MasterFileDetailPage({ params }: { params: Promise
       <div className="flex flex-wrap gap-2">{file.master_url && <a href={file.master_url} target="_blank" rel="noreferrer" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white">Open master file</a>}{canManage && <Link href={`/files/${file.id}/edit`} className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium">Edit metadata</Link>}</div>
     </header>
 
-    {file.access_level === "pc_restricted" && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-950">P&C restricted metadata. Do not copy confidential content or credentials into IEOS.</div>}
+    {file.access_level === "pc_restricted" && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-950">P&C restricted metadata. Do not copy confidential content or credentials into Inter Excel Operating System.</div>}
 
     <section className="rounded-lg border border-neutral-200 p-5"><dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       <DetailItem label="Business unit">{summary?.business_unit_name ?? "—"}</DetailItem>

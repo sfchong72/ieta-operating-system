@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "IE Operating System",
+  title: "Inter Excel Operating System",
   description: "IETA internal OS — SOPs, content ideas, tasks, knowledge base.",
 };
 
