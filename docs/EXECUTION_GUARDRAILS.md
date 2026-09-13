@@ -5,26 +5,27 @@ repository. If a historical document conflicts with it, this document wins.
 
 ## Controlled workspace
 
-- Use `codex-ieos-stage3-manager-dashboard` for the approved Stage 3 scope.
+- Use `codex-ieos-stage4-master-files` for the approved Stage 4 scope.
 - The pre-governance state is preserved outside the repository as a ZIP, Git
   bundle, exact file tree, and manifest.
 - Do not let Hermes and Codex edit this worktree concurrently.
 - Repository-local push protection must remain enabled until Claire explicitly
   authorises a push.
 
-## Allowed in Stage 3
+## Allowed in Stage 4
 
 - Read repository code, history, and documentation.
 - Preserve local files and refs.
-- Implement Manager Dashboard and Needs Attention only: canonical attention
-  summaries, scoped team workload, daily output review, supervisor bottleneck,
-  management filters, and supporting indexes.
+- Implement Master File Register and external-link governance only: searchable
+  file metadata, governed external links, scoped access, task/project/artifact
+  references, supersede/duplicate relationships, cleanup review, audit events,
+  and supporting indexes.
 - Run local typecheck, lint, build, and disposable tests.
 - Produce reports.
 
 ## Prohibited
 
-- Stage 4 Master File Register or later modules.
+- Stage 5 Marketing Leads or later modules.
 - Git push, merge, pull request, or Vercel deployment.
 - Hosted Supabase migration, SQL execution, linking, or database reset.
 - `vercel env pull`, production environment retrieval, or secret display.
