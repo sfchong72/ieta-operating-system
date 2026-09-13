@@ -127,6 +127,17 @@ create table public.marketing_lead_events (
   created_at timestamptz not null default now()
 );
 
+create table public.marketing_lead_access_events (
+  id bigint generated always as identity primary key,
+  profile_id uuid not null references public.profiles(id),
+  business_unit_id uuid not null references public.business_units(id),
+  department_id uuid not null references public.departments(id),
+  actor_id uuid not null references public.profiles(id),
+  event_type text not null check (event_type in ('access_granted','access_changed','access_revoked')),
+  can_manage boolean not null,
+  created_at timestamptz not null default now()
+);
+
 create index marketing_leads_scope_idx on public.marketing_leads (business_unit_id, department_id, status);
 create index marketing_leads_assignee_idx on public.marketing_leads (assigned_to_profile_id, status, next_follow_up_at);
 create index marketing_leads_source_idx on public.marketing_leads (source_slug, date_received desc);
@@ -141,6 +152,7 @@ create index lead_interactions_lead_idx on public.lead_interactions (lead_id, in
 create index marketing_lead_access_profile_idx on public.marketing_lead_access_grants (profile_id, business_unit_id, department_id);
 create index marketing_lead_task_task_idx on public.marketing_lead_task_links (task_id, lead_id);
 create index marketing_lead_events_lead_idx on public.marketing_lead_events (lead_id, created_at desc);
+create index marketing_lead_access_events_profile_idx on public.marketing_lead_access_events (profile_id, created_at desc);
 
 create or replace function public.fn_ml_has_scope_grant(subject_uid uuid, target_bu uuid, target_department uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
@@ -276,6 +288,8 @@ create trigger prevent_lead_interaction_change before update or delete on public
 for each row execute function public.prevent_marketing_lead_history_mutation();
 create trigger prevent_marketing_lead_event_change before update or delete on public.marketing_lead_events
 for each row execute function public.prevent_marketing_lead_history_mutation();
+create trigger prevent_marketing_lead_access_event_change before update or delete on public.marketing_lead_access_events
+for each row execute function public.prevent_marketing_lead_history_mutation();
 
 alter table public.marketing_lead_sources enable row level security;
 alter table public.marketing_lead_settings enable row level security;
@@ -284,6 +298,7 @@ alter table public.marketing_leads enable row level security;
 alter table public.lead_interactions enable row level security;
 alter table public.marketing_lead_task_links enable row level security;
 alter table public.marketing_lead_events enable row level security;
+alter table public.marketing_lead_access_events enable row level security;
 
 create policy marketing_lead_sources_select on public.marketing_lead_sources for select to authenticated
   using (is_active and (select public.fn_ml_can_access_module(auth.uid())));
@@ -299,6 +314,8 @@ create policy marketing_lead_task_links_select on public.marketing_lead_task_lin
   using ((select public.fn_ml_can_view_lead(auth.uid(), lead_id)) and (select public.fn_wm_can_view_task(auth.uid(), task_id)));
 create policy marketing_lead_events_select on public.marketing_lead_events for select to authenticated
   using ((select public.fn_ml_can_view_lead(auth.uid(), lead_id)));
+create policy marketing_lead_access_events_select on public.marketing_lead_access_events for select to authenticated
+  using ((select public.fn_wm_role_of(auth.uid())) = 'super_admin');
 
 create or replace function public.search_marketing_leads(
   p_search text default null, p_assigned_to uuid default null,
@@ -486,6 +503,14 @@ begin
     remarks=nullif(btrim(p_remarks),'') where id=p_lead_id;
   insert into public.marketing_lead_events(lead_id,actor_id,event_type,metadata) values
     (p_lead_id,uid,'metadata_updated',jsonb_build_object('scope_changed',before_row.business_unit_id is distinct from p_business_unit_id or before_row.department_id is distinct from p_department_id,'pii_changed',before_row.name is distinct from btrim(p_name) or before_row.contact_number is distinct from btrim(p_contact_number) or before_row.email is distinct from nullif(lower(btrim(p_email)),'')));
+  if before_row.business_unit_id is distinct from p_business_unit_id
+    or before_row.department_id is distinct from p_department_id
+    or before_row.name is distinct from btrim(p_name)
+    or before_row.contact_number is distinct from btrim(p_contact_number)
+    or before_row.email is distinct from nullif(lower(btrim(p_email)),'') then
+    insert into public.marketing_lead_events(lead_id,actor_id,event_type,metadata)
+      values(p_lead_id,uid,'access_sensitive_changed',jsonb_build_object('scope_changed',before_row.business_unit_id is distinct from p_business_unit_id or before_row.department_id is distinct from p_department_id,'pii_changed',true));
+  end if;
   if before_row.assigned_to_profile_id is distinct from p_assigned_to_profile_id then
     insert into public.marketing_lead_events(lead_id,actor_id,event_type,metadata) values(p_lead_id,uid,'assigned',jsonb_build_object('from',before_row.assigned_to_profile_id,'to',p_assigned_to_profile_id));
   end if;
@@ -517,6 +542,11 @@ begin
     next_follow_up_at=case when is_closed then null else p_next_follow_up_at end,contact_result=btrim(p_result),status=p_status where id=p_lead_id;
   insert into public.marketing_lead_events(lead_id,actor_id,event_type,metadata) values(p_lead_id,uid,'interaction_added',jsonb_build_object('interaction_id',interaction_id,'interaction_type',p_interaction_type,'status',p_status));
   if before_status is distinct from p_status then insert into public.marketing_lead_events(lead_id,actor_id,event_type,metadata) values(p_lead_id,uid,'status_changed',jsonb_build_object('from',before_status,'to',p_status)); end if;
+  if before_status not in ('signed_up','not_suitable','withdrawn','closed_other') and is_closed then
+    insert into public.marketing_lead_events(lead_id,actor_id,event_type) values(p_lead_id,uid,'closed');
+  elsif before_status in ('signed_up','not_suitable','withdrawn','closed_other') and not is_closed then
+    insert into public.marketing_lead_events(lead_id,actor_id,event_type) values(p_lead_id,uid,'reopened');
+  end if;
   return interaction_id;
 end;
 $$;
@@ -538,14 +568,31 @@ create or replace function public.grant_marketing_lead_access(
 )
 returns void language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=auth.uid();
+  previous_manage boolean;
 begin
   if uid is null or not public.fn_wm_is_active(uid) or public.fn_wm_role_of(uid)<>'super_admin' then raise exception using errcode='42501', message='Only the Director can grant Marketing Lead access.'; end if;
   if not public.fn_wm_is_active(p_profile_id) then raise exception using errcode='22023', message='Access requires an active profile.'; end if;
   if public.fn_wm_role_of(p_profile_id)='intern' and p_can_manage then raise exception using errcode='22023', message='Intern Lead access cannot include management.'; end if;
   if not exists(select 1 from public.departments d where d.id=p_department_id and d.business_unit_id=p_business_unit_id) then raise exception using errcode='22023', message='Department must belong to business unit.'; end if;
+  select can_manage into previous_manage from public.marketing_lead_access_grants
+    where profile_id=p_profile_id and business_unit_id=p_business_unit_id and department_id=p_department_id;
   insert into public.marketing_lead_access_grants(profile_id,business_unit_id,department_id,can_manage,granted_by)
     values(p_profile_id,p_business_unit_id,p_department_id,coalesce(p_can_manage,false),uid)
     on conflict(profile_id,business_unit_id,department_id) do update set can_manage=excluded.can_manage,granted_by=excluded.granted_by,created_at=now();
+  insert into public.marketing_lead_access_events(profile_id,business_unit_id,department_id,actor_id,event_type,can_manage)
+    values(p_profile_id,p_business_unit_id,p_department_id,uid,case when previous_manage is null then 'access_granted' else 'access_changed' end,coalesce(p_can_manage,false));
+end;
+$$;
+
+create or replace function public.revoke_marketing_lead_access(p_profile_id uuid,p_business_unit_id uuid,p_department_id uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare uid uuid:=auth.uid(); previous_manage boolean;
+begin
+  if uid is null or not public.fn_wm_is_active(uid) or public.fn_wm_role_of(uid)<>'super_admin' then raise exception using errcode='42501', message='Only the Director can revoke Marketing Lead access.'; end if;
+  select can_manage into strict previous_manage from public.marketing_lead_access_grants where profile_id=p_profile_id and business_unit_id=p_business_unit_id and department_id=p_department_id for update;
+  delete from public.marketing_lead_access_grants where profile_id=p_profile_id and business_unit_id=p_business_unit_id and department_id=p_department_id;
+  insert into public.marketing_lead_access_events(profile_id,business_unit_id,department_id,actor_id,event_type,can_manage)
+    values(p_profile_id,p_business_unit_id,p_department_id,uid,'access_revoked',previous_manage);
 end;
 $$;
 
@@ -568,10 +615,13 @@ $$;
 revoke all on table public.marketing_lead_sources, public.marketing_lead_settings,
   public.marketing_lead_access_grants, public.marketing_leads, public.lead_interactions,
   public.marketing_lead_task_links, public.marketing_lead_events from public,anon,authenticated;
-revoke all on sequence public.marketing_lead_number_seq, public.marketing_lead_events_id_seq from public,anon,authenticated;
+revoke all on table public.marketing_lead_access_events from public,anon,authenticated;
+revoke all on sequence public.marketing_lead_number_seq, public.marketing_lead_events_id_seq,
+  public.marketing_lead_access_events_id_seq from public,anon,authenticated;
 grant select on table public.marketing_lead_sources,public.marketing_lead_settings,
   public.marketing_lead_access_grants,public.marketing_leads,public.lead_interactions,
   public.marketing_lead_task_links,public.marketing_lead_events to authenticated;
+grant select on table public.marketing_lead_access_events to authenticated;
 
 revoke all on function public.fn_ml_next_lead_number() from public,anon,authenticated;
 revoke all on function public.fn_ml_has_scope_grant(uuid,uuid,uuid) from public,anon,authenticated;
@@ -594,6 +644,7 @@ revoke all on function public.update_marketing_lead(uuid,uuid,uuid,text,text,uui
 revoke all on function public.add_lead_interaction(uuid,timestamptz,text,text,text,timestamptz,text,text) from public,anon;
 revoke all on function public.mark_marketing_lead_duplicate(uuid,uuid) from public,anon;
 revoke all on function public.grant_marketing_lead_access(uuid,uuid,uuid,boolean) from public,anon;
+revoke all on function public.revoke_marketing_lead_access(uuid,uuid,uuid) from public,anon;
 revoke all on function public.create_lead_followup_task(uuid,date,text) from public,anon;
 
 grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_can_manage_lead(uuid,uuid),
@@ -604,4 +655,5 @@ grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_can_
   public.update_marketing_lead(uuid,uuid,uuid,text,text,uuid,text,text,text,text,text,text,text,uuid,text,timestamptz,timestamptz,text,numeric,text,text,boolean),
   public.add_lead_interaction(uuid,timestamptz,text,text,text,timestamptz,text,text),
   public.mark_marketing_lead_duplicate(uuid,uuid),public.grant_marketing_lead_access(uuid,uuid,uuid,boolean),
+  public.revoke_marketing_lead_access(uuid,uuid,uuid),
   public.create_lead_followup_task(uuid,date,text) to authenticated;
