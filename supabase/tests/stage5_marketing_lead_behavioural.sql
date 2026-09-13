@@ -1,0 +1,86 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select extensions.plan(60);
+
+set local role anon; select ieos_stage1_test.claim(null,'anon');
+select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.marketing_leads'),'T01 [ANON] lead rows denied');
+select extensions.ok(not has_function_privilege('anon','public.search_marketing_leads(text,uuid,uuid,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,timestamptz,boolean,boolean,uuid,integer)','EXECUTE'),'T02 [ANON] search RPC denied');
+select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.lead_interactions'),'T03 [ANON] interactions denied');
+select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.marketing_lead_access_grants'),'T04 [ANON] grants denied');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000002','authenticated');
+select extensions.ok(public.fn_ml_can_access_module(auth.uid()),'T05 [MANAGER] granted module access');
+select extensions.is((select count(*)::bigint from public.marketing_leads where lead_number like 'LEAD-TEST-%'),6::bigint,'T06 [MANAGER] scoped leads visible');
+select extensions.is((select count(*)::bigint from public.marketing_leads where id='78000000-0000-0000-0000-000000000006'),0::bigint,'T07 [SCOPE] foreign lead hidden');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_search=>'TEST Foreign Lead')),0::bigint,'T08 [PII SEARCH] foreign name not discoverable');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_search=>'foreign@example.test')),0::bigint,'T09 [PII SEARCH] foreign email not discoverable');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_source_slug=>'google_ads')),1::bigint,'T10 [FILTER] source applied server-side');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_status=>'signed_up')),1::bigint,'T11 [FILTER] status applied server-side');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_assigned_to=>'71000000-0000-0000-0000-000000000004')),1::bigint,'T12 [FILTER] assignee applied server-side');
+select extensions.ok(exists(select 1 from public.search_marketing_leads(p_due_only=>true) where attention_reason='OVERDUE INITIAL RESPONSE'),'T13 [DUE] initial response after 24h flagged');
+select extensions.ok(exists(select 1 from public.search_marketing_leads(p_due_only=>true) where attention_reason='OVERDUE FOLLOW-UP'),'T14 [DUE] overdue follow-up flagged');
+select extensions.ok(exists(select 1 from public.search_marketing_leads(p_due_only=>true) where attention_reason='DUE TODAY'),'T15 [DUE] today flagged');
+select extensions.ok(exists(select 1 from public.search_marketing_leads(p_due_only=>true) where attention_reason='CONSULTATION UPCOMING'),'T16 [DUE] consultation flagged');
+select extensions.ok(not exists(select 1 from public.search_marketing_leads(p_due_only=>true) where status='signed_up'),'T17 [CLOSED] signed up excluded from overdue');
+select extensions.is((select count(*)::bigint from public.get_marketing_lead_duplicate_warnings('78000000-0000-0000-0000-000000000002')),1::bigint,'T18 [DUPLICATE] warning uses normalised contact');
+select extensions.ok((public.get_marketing_lead_summary()->>'overdue')::int>=2,'T19 [SUMMARY] permitted overdue aggregate');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$insert into public.marketing_leads(business_unit_id,department_id,branch,source_slug,name,contact_number,programme_interest,assigned_to_profile_id,created_by) values('00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000001','KL','website','Forged','123456','Course','71000000-0000-0000-0000-000000000003','71000000-0000-0000-0000-000000000002')$t$),'T20 [DIRECT WRITE] insert denied');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$update public.marketing_leads set name='Forged' where id='78000000-0000-0000-0000-000000000001'$t$),'T21 [DIRECT WRITE] update denied');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$delete from public.marketing_leads where id='78000000-0000-0000-0000-000000000001'$t$),'T22 [RETENTION] delete denied');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.add_lead_interaction('78000000-0000-0000-0000-000000000001',now(),'call','Initial call completed.','Send programme details.',now()+interval '1 day',null,'contacted')$t$),'T23 [INTERACTION] manager can append');
+select extensions.ok(exists(select 1 from public.lead_interactions where lead_id='78000000-0000-0000-0000-000000000001' and performed_by='71000000-0000-0000-0000-000000000002'),'T24 [AUTH ACTOR] performer derives from Auth');
+select extensions.ok(exists(select 1 from public.marketing_leads where id='78000000-0000-0000-0000-000000000001' and last_contact_at is not null and status='contacted'),'T25 [ATOMIC] lead updated with interaction');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.add_lead_interaction('78000000-0000-0000-0000-000000000001',now(),'call','No answer.','Try again.',null,null,'no_response')$t$),'T26 [FOLLOW-UP] open interaction requires date');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$update public.lead_interactions set result='Forged' where lead_id='78000000-0000-0000-0000-000000000001'$t$),'T27 [IMMUTABLE] interaction update denied');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$delete from public.lead_interactions where lead_id='78000000-0000-0000-0000-000000000001'$t$),'T28 [IMMUTABLE] interaction delete denied');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.mark_marketing_lead_duplicate('78000000-0000-0000-0000-000000000007','78000000-0000-0000-0000-000000000002')$t$),'T29 [DUPLICATE] authorised confirmation succeeds');
+select extensions.ok(exists(select 1 from public.marketing_leads where id='78000000-0000-0000-0000-000000000007' and duplicate_of_lead_id='78000000-0000-0000-0000-000000000002'),'T30 [DUPLICATE] source record preserved and linked');
+select extensions.ok(exists(select 1 from public.marketing_lead_events where lead_id='78000000-0000-0000-0000-000000000007' and event_type='duplicate_marked' and actor_id='71000000-0000-0000-0000-000000000002'),'T31 [AUDIT] duplicate actor derives from Auth');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.create_lead_followup_task('78000000-0000-0000-0000-000000000002',current_date+1,'medium')$t$),'T32 [TASK] manager creates restricted reference task');
+select extensions.ok(exists(select 1 from public.marketing_lead_task_links l join public.work_tasks t on t.id=l.task_id where l.lead_id='78000000-0000-0000-0000-000000000002' and t.title='Follow up LEAD-TEST-002'),'T33 [TASK PRIVACY] title contains lead number only');
+select extensions.ok(not exists(select 1 from public.marketing_lead_task_links l join public.work_tasks t on t.id=l.task_id where t.title ilike '%TEST Lead Two%' or t.instructions ilike '%6012%'),'T34 [TASK PRIVACY] generic task contains no contact PII');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$update public.marketing_lead_events set metadata='{}' where lead_id='78000000-0000-0000-0000-000000000002'$t$),'T35 [AUDIT] events immutable');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000003','authenticated');
+select extensions.ok(public.fn_ml_can_access_module(auth.uid()),'T36 [STAFF] explicit appointment grants module');
+select extensions.is((select count(*)::bigint from public.marketing_leads),5::bigint,'T37 [STAFF] only assigned leads visible');
+select extensions.is((select count(*)::bigint from public.marketing_leads where id='78000000-0000-0000-0000-000000000003'),0::bigint,'T38 [CROSS USER] intern-assigned lead hidden');
+select extensions.is((select count(*)::bigint from public.marketing_leads where id='78000000-0000-0000-0000-000000000006'),0::bigint,'T39 [CROSS SCOPE] foreign lead hidden');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.add_lead_interaction('78000000-0000-0000-0000-000000000002',now(),'whatsapp','Details sent.','Check response.',now()+interval '2 days','https://example.test/private/evidence','follow_up')$t$),'T40 [STAFF] assignee can append interaction');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.add_lead_interaction('78000000-0000-0000-0000-000000000003',now(),'call','Forged.','None.',now()+interval '1 day',null,'follow_up')$t$),'T41 [CROSS USER] cannot update another assignee');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.update_marketing_lead('78000000-0000-0000-0000-000000000002','00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000001','KL','website',null,null,'Changed','123456',null,null,null,'Course','71000000-0000-0000-0000-000000000003','follow_up',now()+interval '1 day',null,null,null,null,null,true)$t$),'T42 [STAFF] cannot change lead metadata');
+select extensions.is((select count(*)::bigint from public.marketing_lead_access_grants),1::bigint,'T43 [GRANT PRIVACY] staff sees only own capability');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000004','authenticated');
+select extensions.ok(public.fn_ml_can_access_module(auth.uid()),'T44 [INTERN] selected intern explicitly appointed');
+select extensions.is((select count(*)::bigint from public.marketing_leads),1::bigint,'T45 [INTERN] only assigned lead visible');
+select extensions.is((select email from public.marketing_leads),'intern.lead@example.test'::text,'T46 [INTERN PII] permitted assigned contact visible');
+select extensions.is((select count(*)::bigint from public.search_marketing_leads(p_search=>'lead.two@example.test')),0::bigint,'T47 [INTERN PII] other contact not searchable');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.add_lead_interaction('78000000-0000-0000-0000-000000000003',now(),'whatsapp','Reply received.','Send schedule.',now()+interval '1 day',null,'follow_up')$t$),'T48 [INTERN] assigned interaction allowed');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.mark_marketing_lead_duplicate('78000000-0000-0000-0000-000000000003','78000000-0000-0000-0000-000000000002')$t$),'T49 [INTERN] duplicate action denied');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.create_lead_followup_task('78000000-0000-0000-0000-000000000003',current_date+1,'medium')$t$),'T50 [INTERN] task creation denied');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000005','authenticated');
+select extensions.ok(not public.fn_ml_can_access_module(auth.uid()),'T51 [UNASSIGNED] no module access');
+select extensions.is((select count(*)::bigint from public.marketing_leads),0::bigint,'T52 [UNASSIGNED] no lead PII');
+select extensions.is((public.get_marketing_lead_summary()->>'authorised')::boolean,false,'T53 [AGGREGATE] summary reveals no counts');
+select extensions.is((select count(*)::bigint from public.marketing_lead_sources),0::bigint,'T54 [CONFIG] source choices hidden without capability');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000006','authenticated');
+select extensions.ok(not public.fn_ml_can_access_module(auth.uid()),'T55 [INACTIVE] capability denied');
+select extensions.is((select count(*)::bigint from public.marketing_leads),0::bigint,'T56 [INACTIVE] no PII visible');
+reset role;
+
+set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000001','authenticated');
+select extensions.is((select count(*)::bigint from public.marketing_leads where lead_number like 'LEAD-TEST-%'),7::bigint,'T57 [DIRECTOR] global restricted visibility');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.grant_marketing_lead_access('71000000-0000-0000-0000-000000000007','00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000002',false)$t$),'T58 [APPOINTMENT] Director grants bounded access');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.grant_marketing_lead_access('71000000-0000-0000-0000-000000000004','00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000001',true)$t$),'T59 [INTERN CAPABILITY] management grant rejected');
+select extensions.is((select count(*)::bigint from public.marketing_lead_settings),1::bigint,'T60 [SETTINGS] Director sees bounded configuration');
+
+select * from extensions.finish();
+rollback;

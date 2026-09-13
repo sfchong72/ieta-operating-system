@@ -30,15 +30,18 @@ function NavLinks({
   isSuperAdmin,
   isApprover,
   canViewWorkDashboard,
+  canAccessMarketingLeads,
 }: {
   onNavigate?: () => void;
   isSuperAdmin: boolean;
   isApprover: boolean;
   canViewWorkDashboard: boolean;
+  canAccessMarketingLeads: boolean;
 }) {
   const pathname = usePathname();
   const items = [
     ...(canViewWorkDashboard ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+    ...(canAccessMarketingLeads ? [{ href: "/leads/my", label: "My Leads" }, { href: "/leads/follow-up", label: "Follow-Up Due" }] : []),
     ...NAV_ITEMS,
     ...(isApprover ? TEAM_WORK_ITEMS : []),
     ...(isApprover ? [APPROVALS_ITEM] : []),
@@ -105,7 +108,7 @@ export function NavShell({
           <p className="text-xs text-neutral-500">Inter Excel Operations System</p>
           <p className="mt-1 text-xs font-medium text-neutral-600">IETA — Marketing &amp; Social Media</p>
         </div>
-        <NavLinks isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} />
+        <NavLinks isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} canAccessMarketingLeads={currentUser.canAccessMarketingLeads} />
         <UserBadge currentUser={currentUser} />
       </aside>
 
@@ -125,7 +128,7 @@ export function NavShell({
       </div>
       {open && (
         <div id="mobile-nav" className="border-b border-neutral-200 p-4 md:hidden">
-          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} />
+          <NavLinks onNavigate={() => setOpen(false)} isSuperAdmin={isSuperAdmin} isApprover={isApprover} canViewWorkDashboard={currentUser.canViewWorkDashboard} canAccessMarketingLeads={currentUser.canAccessMarketingLeads} />
           <UserBadge currentUser={currentUser} />
         </div>
       )}

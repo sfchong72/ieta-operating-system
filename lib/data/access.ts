@@ -13,6 +13,7 @@ export type CurrentUser = {
   businessUnitIds: string[];
   departmentIds: string[];
   canViewWorkDashboard: boolean;
+  canAccessMarketingLeads: boolean;
 };
 
 /**
@@ -29,15 +30,16 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [profileRes, roleRes, buAccessRes, deptAccessRes, dashboardRes] = await Promise.all([
+  const [profileRes, roleRes, buAccessRes, deptAccessRes, dashboardRes, leadsRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("user_role_assignment").select("*").eq("profile_id", user.id).maybeSingle(),
     supabase.from("user_business_unit_access").select("*").eq("profile_id", user.id),
     supabase.from("user_department_access").select("*").eq("profile_id", user.id),
     supabase.rpc("fn_wm_can_view_dashboard", { subject_uid: user.id }),
+    supabase.rpc("fn_ml_can_access_module", { subject_uid: user.id }),
   ]);
 
-  for (const res of [profileRes, roleRes, buAccessRes, deptAccessRes, dashboardRes]) {
+  for (const res of [profileRes, roleRes, buAccessRes, deptAccessRes, dashboardRes, leadsRes]) {
     if (res.error) throw res.error;
   }
 
@@ -49,6 +51,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     businessUnitIds: (buAccessRes.data ?? []).map((r) => r.business_unit_id),
     departmentIds: (deptAccessRes.data ?? []).map((r) => r.department_id),
     canViewWorkDashboard: dashboardRes.data === true,
+    canAccessMarketingLeads: leadsRes.data === true,
   };
 }
 
