@@ -65,17 +65,17 @@ approval to begin the next phase.
   desktop/mobile UAT, and cleanup.
 - [x] Produce Stage 3 completion/UAT and rollback report.
 
-## Stage 4 — approved; local implementation only
+## Stage 4 — complete; awaiting acceptance
 
-- [ ] Add canonical `master_files`, configurable categories, scoped access,
+- [x] Add canonical `master_files`, configurable categories, scoped access,
   relationships, and immutable audit events.
-- [ ] Add audited create/edit/supersede/duplicate/verify/archive actions.
-- [ ] Implement File Register, File Detail, Add File, Edit Metadata, and File
+- [x] Add audited create/edit/supersede/duplicate/verify/archive actions.
+- [x] Implement File Register, File Detail, Add File, Edit Metadata, and File
   Review/Cleanup only.
-- [ ] Add server-side search, filters, current-first ordering, and pagination.
-- [ ] Verify restricted metadata and link values cannot leak through rows,
+- [x] Add server-side search, filters, current-first ordering, and bounded results.
+- [x] Verify restricted metadata and link values cannot leak through rows,
   relationships, search, or aggregates.
-- [ ] Run Stage 1–3 and approval regressions, Stage 4 behavioural tests,
+- [x] Run Stage 1–3 and approval regressions, Stage 4 behavioural tests,
   typecheck, lint, build, desktop/mobile UAT, and cleanup.
-- [ ] Produce Stage 4 completion/UAT and rollback report.
+- [x] Produce Stage 4 completion/UAT and rollback report.
 
