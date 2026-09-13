@@ -241,8 +241,17 @@ as $$
       where department.id = target_department
         and department.business_unit_id = target_business_unit
     )
-    and public.fn_wm_subject_has_business_unit_access(subject_uid, target_business_unit)
-    and public.fn_wm_subject_has_department_access(subject_uid, target_department);
+    and case public.fn_wm_role_of(subject_uid)
+      when 'super_admin' then true
+      when 'management' then
+        public.fn_wm_subject_has_business_unit_access(subject_uid, target_business_unit)
+        and public.fn_wm_subject_has_department_access(subject_uid, target_department)
+      when 'staff' then
+        public.fn_wm_subject_has_department_access(subject_uid, target_department)
+      when 'intern' then
+        public.fn_wm_subject_has_department_access(subject_uid, target_department)
+      else false
+    end;
 $$;
 
 create or replace function public.fn_mf_has_access_grant(
