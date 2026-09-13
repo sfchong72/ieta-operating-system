@@ -175,6 +175,13 @@ returns boolean language sql stable security definer set search_path = '' as $$
   );
 $$;
 
+create or replace function public.fn_ml_is_director(subject_uid uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select subject_uid = auth.uid()
+    and public.fn_wm_is_active(subject_uid)
+    and public.fn_wm_role_of(subject_uid) = 'super_admin';
+$$;
+
 create or replace function public.fn_ml_can_manage_scope(subject_uid uuid, target_bu uuid, target_department uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select subject_uid = auth.uid() and public.fn_wm_is_active(subject_uid) and (
@@ -303,9 +310,9 @@ alter table public.marketing_lead_access_events enable row level security;
 create policy marketing_lead_sources_select on public.marketing_lead_sources for select to authenticated
   using (is_active and (select public.fn_ml_can_access_module(auth.uid())));
 create policy marketing_lead_settings_select on public.marketing_lead_settings for select to authenticated
-  using ((select public.fn_wm_role_of(auth.uid())) = 'super_admin');
+  using ((select public.fn_ml_is_director(auth.uid())));
 create policy marketing_lead_access_select on public.marketing_lead_access_grants for select to authenticated
-  using (profile_id = (select auth.uid()) or (select public.fn_wm_role_of(auth.uid())) = 'super_admin');
+  using (profile_id = (select auth.uid()) or (select public.fn_ml_is_director(auth.uid())));
 create policy marketing_leads_select on public.marketing_leads for select to authenticated
   using ((select public.fn_ml_can_view_lead(auth.uid(), id)));
 create policy lead_interactions_select on public.lead_interactions for select to authenticated
@@ -315,7 +322,7 @@ create policy marketing_lead_task_links_select on public.marketing_lead_task_lin
 create policy marketing_lead_events_select on public.marketing_lead_events for select to authenticated
   using ((select public.fn_ml_can_view_lead(auth.uid(), lead_id)));
 create policy marketing_lead_access_events_select on public.marketing_lead_access_events for select to authenticated
-  using ((select public.fn_wm_role_of(auth.uid())) = 'super_admin');
+  using ((select public.fn_ml_is_director(auth.uid())));
 
 create or replace function public.search_marketing_leads(
   p_search text default null, p_assigned_to uuid default null,
@@ -626,6 +633,7 @@ grant select on table public.marketing_lead_access_events to authenticated;
 revoke all on function public.fn_ml_next_lead_number() from public,anon,authenticated;
 revoke all on function public.fn_ml_has_scope_grant(uuid,uuid,uuid) from public,anon,authenticated;
 revoke all on function public.fn_ml_can_access_module(uuid) from public,anon,authenticated;
+revoke all on function public.fn_ml_is_director(uuid) from public,anon,authenticated;
 revoke all on function public.fn_ml_can_manage_scope(uuid,uuid,uuid) from public,anon,authenticated;
 revoke all on function public.fn_ml_can_view_lead(uuid,uuid) from public,anon,authenticated;
 revoke all on function public.fn_ml_can_manage_lead(uuid,uuid) from public,anon,authenticated;
@@ -647,7 +655,7 @@ revoke all on function public.grant_marketing_lead_access(uuid,uuid,uuid,boolean
 revoke all on function public.revoke_marketing_lead_access(uuid,uuid,uuid) from public,anon;
 revoke all on function public.create_lead_followup_task(uuid,date,text) from public,anon;
 
-grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_can_view_lead(uuid,uuid),public.fn_ml_can_manage_lead(uuid,uuid),
+grant execute on function public.fn_ml_can_access_module(uuid),public.fn_ml_is_director(uuid),public.fn_ml_can_view_lead(uuid,uuid),public.fn_ml_can_manage_lead(uuid,uuid),
   public.fn_ml_can_interact(uuid,uuid),public.search_marketing_leads(text,uuid,uuid,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,timestamptz,boolean,boolean,uuid,integer),
   public.get_marketing_lead_duplicate_warnings(uuid),public.get_marketing_lead_summary(uuid),
   public.get_marketing_lead_audit(uuid),
