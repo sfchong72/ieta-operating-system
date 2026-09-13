@@ -16,7 +16,9 @@ where id in (
   '72000000-0000-0000-0000-000000000007'
 );
 update public.work_tasks
-set status_changed_at = timezone('Asia/Kuala_Lumpur', now()) - interval '5 days'
+-- Keep this safely beyond the configured two-working-day threshold on every
+-- day of the week; a five-calendar-day offset is not deterministic on weekends.
+set status_changed_at = timezone('Asia/Kuala_Lumpur', now()) - interval '14 days'
 where id = '72000000-0000-0000-0000-000000000009';
 update public.work_tasks
 set status_changed_at = timezone('Asia/Kuala_Lumpur', now()) - interval '4 days'
