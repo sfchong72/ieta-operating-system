@@ -38,8 +38,8 @@ export async function getMarketingLeadDetail(id: string) {
   for (const result of [leadRes, rowRes, interactionsRes, tasksRes, duplicateRes, auditRes, canManageRes]) if (result.error) throw result.error;
   if (!leadRes.data) return null;
   const interactions = (interactionsRes.data ?? []).map((item) => {
-    const profile = item.profiles as unknown as { full_name: string | null; email: string };
-    return { ...item, performer_name: profile.full_name ?? profile.email };
+    const profile = item.profiles as unknown as { full_name: string | null; email: string } | null;
+    return { ...item, performer_name: profile?.full_name ?? profile?.email ?? "Authorised user" };
   }) as LeadInteraction[];
   const tasks = (tasksRes.data ?? []).map((item) => {
     const task = item.work_tasks as unknown as { task_number: string; title: string };
@@ -71,4 +71,3 @@ export async function listLeadProgrammes() {
   const rows = await searchMarketingLeads();
   return Array.from(new Set(rows.map((row) => row.programme_interest))).sort();
 }
-
