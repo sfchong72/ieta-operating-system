@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$OutputDirectory,
-  [string]$RequiredAncestor = 'fe20311f059b0e3f06223420147f9f81f9741daf',
-  [string]$RequiredBranch = 'codex-ieos-stage3-manager-dashboard',
+  [string]$RequiredAncestor = '0364539201cce7756d30e0fded23349d276a2f17',
+  [string]$RequiredBranch = 'codex-ieos-stage4-master-files',
   [switch]$InteractiveUat,
   [switch]$SelfTest
 )
@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $ExpectedCliVersion = '2.116.0'
 $Repository = [IO.Path]::GetFullPath($PSScriptRoot)
 $RunId = [guid]::NewGuid().ToString('N')
-$ProjectId = "ieos-stage3-$($RunId.Substring(0,12))"
+$ProjectId = "ieos-stage4-$($RunId.Substring(0,12))"
 $Lab = Join-Path ([IO.Path]::GetTempPath()) $ProjectId
 
 if (-not $OutputDirectory) {
@@ -28,6 +28,7 @@ $Results = [ordered]@{
   'Stage 1 behavioural matrix' = 'NOT RUN'
   'Stage 2 behavioural matrix' = 'NOT RUN'
   'Stage 3 dashboard matrix' = 'NOT RUN'
+  'Stage 4 master-file matrix' = 'NOT RUN'
   'Staging replay 001-008' = 'NOT RUN'
   'Database lint' = 'NOT RUN'
   'Approval/edit regression' = 'NOT RUN'
@@ -65,6 +66,7 @@ $PublicScripts = @(
   '20260908113917_work_management_foundation.sql'
   '20260910101811_stage2_daily_output_log.sql'
   '20260910142301_stage3_manager_dashboard.sql'
+  '20260913053937_stage4_master_file_register.sql'
 )
 
 function Write-Utf8([string]$Path, [string]$Text) {
@@ -147,7 +149,7 @@ function Run-Docker([string[]]$ArgumentList, [string]$LogName, [switch]$AllowFai
 }
 
 function Run-Sql([string]$SqlPath, [string]$LogName) {
-  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage3-*') {
+  if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage4-*') {
     throw 'Disposable local database container was not safely resolved.'
   }
   $remotePath = '/tmp/' + (([IO.Path]::GetFileName($SqlPath)) -replace '[^A-Za-z0-9_.-]', '_')
@@ -174,14 +176,14 @@ function Assert-DisposablePath([string]$Path) {
   if (-not $fullPath.StartsWith($tempRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing cleanup outside the Windows temporary directory: $fullPath"
   }
-  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage3-*') {
+  if ((Split-Path -Leaf $fullPath) -notlike 'ieos-stage4-*') {
     throw "Refusing cleanup of unexpected directory: $fullPath"
   }
 }
 
 function Write-Report([int]$ExitCode) {
   $lines = @(
-    '# IEOS Stage 3 manager-dashboard disposable test report',
+    '# IEOS Stage 4 master-file disposable test report',
     '',
     "- Repository: ``$Repository``",
     "- Required preserved ancestor: ``$RequiredAncestor``",
@@ -318,7 +320,7 @@ try {
     foreach ($scriptName in $PublicScripts) {
       Run-Sql (Join-Path $Repository "supabase\migrations\$scriptName") "public-$scriptName.log" | Out-Null
     }
-    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1, Stage 2, and Stage 3 migrations'
+    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1, Stage 2, Stage 3, and Stage 4 migrations'
 
     $CurrentPhase = 'Stage 1 behavioural matrix'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\stage1_work_management_fixtures.sql') 'stage1-fixtures.log' | Out-Null
@@ -346,6 +348,15 @@ try {
       throw "Stage 3 dashboard matrix failed: $($stage3Tap.Pass) passed, $($stage3Tap.Fail) failed, expected 60 tests."
     }
     $Results['Stage 3 dashboard matrix'] = 'PASS - 60/60 dashboard access, canonical flags, working-day, workload, review and aggregate-leakage tests'
+
+    $CurrentPhase = 'Stage 4 master-file matrix'
+    Run-Sql (Join-Path $Repository 'supabase\tests\support\stage4_master_file_fixtures.sql') 'stage4-fixtures.log' | Out-Null
+    $stage4Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\stage4_master_file_behavioural.sql') 'stage4-master-file-matrix-92.log'
+    $stage4Tap = Read-Tap $stage4Matrix.Log
+    if ($stage4Tap.Total -ne 92 -or $stage4Tap.Fail -ne 0) {
+      throw "Stage 4 master-file matrix failed: $($stage4Tap.Pass) passed, $($stage4Tap.Fail) failed, expected 92 tests."
+    }
+    $Results['Stage 4 master-file matrix'] = 'PASS - 92/92 RLS, scoped search, P&C leakage, lifecycle, relationships and audit tests'
 
     $CurrentPhase = 'Staging replay 001-008'
     foreach ($scriptName in $StagingScripts) {
@@ -475,7 +486,7 @@ try {
   Write-Report $exitCode
   Write-Host "Report: $ReportPath"
   if ($exitCode -eq 0) {
-    Write-Host 'RESULT: PASS - Stage 3 replay, security, regression, lint, and cleanup completed.'
+    Write-Host 'RESULT: PASS - Stage 4 replay, security, regression, lint, and cleanup completed.'
   } elseif ($exitCode -eq 2) {
     Write-Host 'RESULT: TESTS PASSED; CLEANUP FAILED - see report.'
   } else {
