@@ -12,10 +12,10 @@ they conflict.
 - The approved product authority is `docs/IEOS_MASTER_PLAN.md`.
 - The execution authority is `docs/EXECUTION_GUARDRAILS.md`.
 - The current permitted phase is recorded in `docs/TASKS.md`.
-- Stages 0, 0.5, 1, 2, and 3 are complete and accepted. Current permitted
-  phase: Stage 4 Master File Register and external-link governance only, on
-  `codex-ieos-stage4-master-files`.
-- Stop after the Stage 4 completion/UAT report. Stage 5 is not authorised.
+- Stages 0 through 4 are complete and accepted. Current permitted phase:
+  Stage 5 Restricted Marketing Lead Register only, on
+  `codex-ieos-stage5-marketing-leads`.
+- Stop after the Stage 5 completion/UAT report. Stage 6 is not authorised.
 
 ## Safety gates
 
@@ -56,20 +56,20 @@ they conflict.
   reference only authorised restricted record IDs or restricted file links.
 - Actual passwords must never be stored in IEOS.
 
-## Approved Stage 4 scope
+## Approved Stage 5 scope
 
-Stage 4 adds only File Register, File Detail, Add File, Edit Metadata, and File
-Review/Cleanup. IEOS stores governed metadata and external links; it does not
-store Google Drive, Canva, or other provider file contents and does not change
-provider permissions.
+Stage 5 adds only the Restricted Marketing Lead Register, My Leads, Follow-Up
+Due, Lead Detail, simple Manager Summary, append-only interactions, duplicate
+warnings, restricted task references, and supporting configuration/audit.
+Lead PII, private source URLs, and aggregate counts must remain inaccessible
+without explicit Marketing Lead capability and organisational scope.
 
 The generic `work_tasks` domain must not overwrite the existing
 marketing-specific `content_tasks` or `content_items` models. Existing work is
 preserved until a tested migration or retirement decision is approved.
 
-`master_files` and `task_artifacts` remain separate domains. File visibility,
-link visibility, appointed-personnel access, supersede/duplicate actions, and
-audit history must be enforced by database policy/action functions. Actual
-passwords must never be stored. Stage 5 Marketing Leads and all later modules
-remain prohibited.
+Existing source sheets remain historical/intake references. Do not bulk-import
+historical leads, silently merge duplicates, overwrite interaction history, or
+copy contact information into generic work tasks. Stage 6 Social Media / Content
+Planner and all later modules remain prohibited.
 

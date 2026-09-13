@@ -65,7 +65,7 @@ approval to begin the next phase.
   desktop/mobile UAT, and cleanup.
 - [x] Produce Stage 3 completion/UAT and rollback report.
 
-## Stage 4 — complete; awaiting acceptance
+## Stage 4 — complete and accepted
 
 - [x] Add canonical `master_files`, configurable categories, scoped access,
   relationships, and immutable audit events.
@@ -78,4 +78,17 @@ approval to begin the next phase.
 - [x] Run Stage 1–3 and approval regressions, Stage 4 behavioural tests,
   typecheck, lint, build, desktop/mobile UAT, and cleanup.
 - [x] Produce Stage 4 completion/UAT and rollback report.
+
+## Stage 5 — approved; local implementation only
+
+- [ ] Add canonical restricted `marketing_leads`, configurable sources,
+  explicit access grants, task references, and immutable audit events.
+- [ ] Add append-only `lead_interactions` and atomic lead follow-up updates.
+- [ ] Add duplicate warnings without automatic merge or deletion.
+- [ ] Implement Lead Register, My Leads, Follow-Up Due, Lead Detail, and simple
+  Manager Summary only.
+- [ ] Verify PII, private URL, task-reference, scope, and aggregate isolation.
+- [ ] Run Stages 1–4 and approval regressions, Stage 5 behavioural tests,
+  typecheck, lint, build, desktop/mobile UAT, and cleanup.
+- [ ] Produce Stage 5 completion/UAT and rollback report.
 

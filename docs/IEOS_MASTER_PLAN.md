@@ -1,7 +1,7 @@
 # IEOS Authoritative Staged Product Plan
 
-Status: Stages 0, 0.5, 1, 2, and 3 accepted; Stage 4 Master File Register is
-authorised for local implementation and validation only. Stage 5 is not
+Status: Stages 0 through 4 accepted; Stage 5 Restricted Marketing Lead Register
+is authorised for local implementation and validation only. Stage 6 is not
 authorised.
 
 This plan supersedes the repository's earlier demo-first product plan wherever
@@ -97,15 +97,14 @@ Artifact visibility must be enforced by database policy as well as UI filtering.
 14. Import / Migration Tools.
 15. Future enhancements only after the foundation is stable.
 
-## Stage 4 approved technical scope
+## Stage 5 approved technical scope
 
-Stage 4 adds a canonical `master_files` register for governed metadata and
-external links, plus configurable categories, task/artifact relationships,
-explicit appointed-personnel access, supersede/duplicate actions, immutable
-audit events, and a cleanup review view. It does not store provider file
-contents or change provider permissions. `master_files` and `task_artifacts`
-remain separate domains, and no bulk import or later operational module is
-included.
+Stage 5 adds canonical restricted `marketing_leads`, configurable sources,
+append-only `lead_interactions`, explicit appointed access, follow-up attention,
+duplicate warnings without automatic merge, restricted task references,
+immutable audit events, and a simple security-preserving manager summary.
+Existing source sheets remain historical/intake references and are not bulk
+imported. Lead contact data must never be copied into generic task text.
 
 Minimum role behaviour:
 
