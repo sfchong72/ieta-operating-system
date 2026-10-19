@@ -247,6 +247,7 @@ export type PlatformPublication = {
 };
 
 export type Profile = {
+  is_active: boolean;
   id: string;
   email: string;
   full_name: string | null;

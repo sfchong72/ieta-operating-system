@@ -57,6 +57,7 @@ function NavLinks({
             ...(isApprover ? [{ href: "/leads", label: "Lead Register" }] : []),
             { href: "/leads/my", label: "My Leads" },
             { href: "/leads/follow-up", label: "Follow-Up Due" },
+            ...(isApprover ? [{ href: "/leads/campaigns", label: "Lead Campaigns" }] : []),
           ],
         }]
       : []),
@@ -75,7 +76,7 @@ function NavLinks({
           </p>
           <div className="flex flex-col gap-1">
             {group.items.map((item) => {
-              const inLeadRegister = item.href === "/leads" && !["/leads/my", "/leads/follow-up"].some((href) => pathname === href || pathname.startsWith(href + "/"));
+              const inLeadRegister = item.href === "/leads" && !["/leads/my", "/leads/follow-up", "/leads/campaigns"].some((href) => pathname === href || pathname.startsWith(href + "/"));
               const active = pathname === item.href || (inLeadRegister && pathname.startsWith("/leads/")) || (!["/work", "/leads"].includes(item.href) && pathname.startsWith(item.href + "/"));
               return (
                 <Link

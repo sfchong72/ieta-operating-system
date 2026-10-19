@@ -1,8 +1,18 @@
 import Link from "next/link";
 import { listKnowledgeItems } from "@/lib/data/knowledge-items";
 import { PageHeader, EmptyState } from "@/components/ui";
+import { getCurrentUser } from "@/lib/data/access";
 
 export default async function KnowledgePage() {
+  const user = await getCurrentUser();
+  if (user?.role !== "super_admin") {
+    return <div>
+      <PageHeader title="Knowledge Base" description="Reusable reference material." />
+      <p className="rounded-lg border border-neutral-200 p-4 text-sm">
+        Unclassified legacy knowledge is restricted to Super Admin until company and confidentiality access is reviewed.
+      </p>
+    </div>;
+  }
   const items = await listKnowledgeItems();
 
   return (

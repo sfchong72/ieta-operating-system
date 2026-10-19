@@ -79,16 +79,31 @@ approval to begin the next phase.
   typecheck, lint, build, desktop/mobile UAT, and cleanup.
 - [x] Produce Stage 4 completion/UAT and rollback report.
 
-## Stage 5 — approved; local implementation only
+## Stage 5 — locally completed and tested; Director acceptance pending
 
-- [ ] Add canonical restricted `marketing_leads`, configurable sources,
+- [x] Add canonical restricted `marketing_leads`, configurable sources,
   explicit access grants, task references, and immutable audit events.
-- [ ] Add append-only `lead_interactions` and atomic lead follow-up updates.
-- [ ] Add duplicate warnings without automatic merge or deletion.
-- [ ] Implement Lead Register, My Leads, Follow-Up Due, Lead Detail, and simple
+- [x] Add append-only `lead_interactions` and atomic lead follow-up updates.
+- [x] Add duplicate warnings without automatic merge or deletion.
+- [x] Implement Lead Register, My Leads, Follow-Up Due, Lead Detail, and simple
   Manager Summary only.
-- [ ] Verify PII, private URL, task-reference, scope, and aggregate isolation.
-- [ ] Run Stages 1–4 and approval regressions, Stage 5 behavioural tests,
+- [x] Verify PII, private URL, task-reference, scope, and aggregate isolation.
+- [x] Run Stages 1–4 and approval regressions, Stage 5 behavioural tests,
   typecheck, lint, build, desktop/mobile UAT, and cleanup.
-- [ ] Produce Stage 5 completion/UAT and rollback report.
+- [x] Record Stage 5 completion/UAT and rollback evidence in the P0 reports.
+
+## P0 — local candidate complete; release approval pending
+
+- [x] Preserve dirty Stage 5 work before edits; record local/remote baseline.
+- [x] Stabilise existing leads, campaign configuration and MYT time handling.
+- [x] Restore public approval/edit compatibility without changing old migrations.
+- [x] Enforce active identity, one application role, scoped legacy access and
+  default denial for unclassified knowledge/unscoped SOPs.
+- [x] Replay public and staging locally; test regressions, negative access,
+  approval/evidence, HTTP authentication, desktop/mobile and recovery.
+- [x] Produce `IEOS_P0_IMPLEMENTATION_REPORT.md`, `IEOS_P0_TEST_RESULTS.md`,
+  `IEOS_P0_RELEASE_READINESS.md` and `IEOS_P1_KNOWLEDGE_REUSE_NOTES.md`.
+- [ ] Director accepts the candidate and detailed access/cutover conditions.
+- [ ] Separate authorisation for any commit, hosted rehearsal, migration,
+  push or deployment. P1–P4 implementation remains unauthorised.
 

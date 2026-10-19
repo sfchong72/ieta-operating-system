@@ -12,7 +12,16 @@ repository. If a historical document conflicts with it, this document wins.
 - Repository-local push protection must remain enabled until Claire explicitly
   authorises a push.
 
-## Allowed in Stage 5
+## Current P0 authority — 12 October 2026
+
+Director authorised local stabilisation, completion of existing Stage 5,
+public/staging compatibility, legacy security, inactive-user enforcement,
+permission/migration review, disposable recovery tests and four P0 reports.
+No commits, hosted changes, external integration changes, P1–P4 implementation
+or release are authorised. Stop for Director approval after local reporting.
+`IEOS_P0_RELEASE_READINESS.md` records the tested candidate and release gates.
+
+## Preserved Stage 5 scope
 
 - Read repository code, history, and documentation.
 - Preserve local files and refs.

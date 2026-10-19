@@ -2,6 +2,19 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select extensions.plan(35);
+-- Accept zero affected rows or insufficient_privilege, never arbitrary errors.
+create function ieos_test.history_write_denied(statement text) returns boolean
+language plpgsql security invoker set search_path='' as $$
+declare affected bigint;
+begin
+ execute statement;
+ get diagnostics affected=row_count;
+ return affected=0;
+exception when insufficient_privilege then return true;
+ when others then return false;
+end $$;
+grant execute on function ieos_test.history_write_denied(text) to authenticated;
+
 
 -- Staff: own department edit/submit succeeds; workflow and history cannot be forged.
 set local role authenticated;
@@ -149,8 +162,8 @@ select extensions.ok(
   -- RLS-denied UPDATE/DELETE statements complete successfully but affect zero
   -- rows. Assert the row counts as well as the durable audit state instead of
   -- incorrectly requiring PostgreSQL to raise an exception.
-  ieos_test.affected_rows($q$update staging.approval_action set comment='tampered' where content_item_id='88888888-0000-0000-0000-000000000002'$q$) = 0
-  and ieos_test.affected_rows($q$delete from staging.approval_action where content_item_id='88888888-0000-0000-0000-000000000002'$q$) = 0
+  ieos_test.history_write_denied($q$update staging.approval_action set comment='tampered' where content_item_id='88888888-0000-0000-0000-000000000002'$q$)
+  and ieos_test.history_write_denied($q$delete from staging.approval_action where content_item_id='88888888-0000-0000-0000-000000000002'$q$)
   and (
     select count(*) = 1
       and max(comment) = 'Approved by Claire-equivalent'

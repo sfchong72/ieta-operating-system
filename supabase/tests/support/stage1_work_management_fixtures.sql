@@ -79,7 +79,9 @@ set encrypted_password = extensions.crypt('IEOS-Stage1-UAT-Only!', extensions.ge
 where email in (
   'director@stage1.ieos.test',
   'manager@stage1.ieos.test',
-  'intern@stage1.ieos.test'
+  'intern@stage1.ieos.test',
+  'staff@stage1.ieos.test',
+  'inactive@stage1.ieos.test'
 );
 
 insert into auth.identities (
@@ -99,7 +101,9 @@ from auth.users u
 where u.email in (
   'director@stage1.ieos.test',
   'manager@stage1.ieos.test',
-  'intern@stage1.ieos.test'
+  'intern@stage1.ieos.test',
+  'staff@stage1.ieos.test',
+  'inactive@stage1.ieos.test'
 )
 on conflict do nothing;
 

@@ -12,10 +12,13 @@ they conflict.
 - The approved product authority is `docs/IEOS_MASTER_PLAN.md`.
 - The execution authority is `docs/EXECUTION_GUARDRAILS.md`.
 - The current permitted phase is recorded in `docs/TASKS.md`.
-- Stages 0 through 4 are complete and accepted. Current permitted phase:
-  Stage 5 Restricted Marketing Lead Register only, on
-  `codex-ieos-stage5-marketing-leads`.
-- Stop after the Stage 5 completion/UAT report. Stage 6 is not authorised.
+- Stages 0 through 4 are complete and accepted. On 12 October 2026 the
+  Director authorised bounded P0 stabilisation, Stage 5 completion and
+  disposable local testing on `codex-ieos-stage5-marketing-leads`.
+- D1, D4 and D8 are approved in principle; detailed release/access approval
+  remains separate. See `docs/IEOS_P0_RELEASE_READINESS.md`.
+- Stop after the four P0 reports. Do not commit, push, merge, deploy, change
+  hosted Supabase/Vercel or external integrations, or implement P1–P4.
 
 ## Safety gates
 
@@ -56,7 +59,7 @@ they conflict.
   reference only authorised restricted record IDs or restricted file links.
 - Actual passwords must never be stored in IEOS.
 
-## Approved Stage 5 scope
+## Preserved Stage 5 scope
 
 Stage 5 adds only the Restricted Marketing Lead Register, My Leads, Follow-Up
 Due, Lead Detail, simple Manager Summary, append-only interactions, duplicate

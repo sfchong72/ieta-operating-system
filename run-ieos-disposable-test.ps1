@@ -4,6 +4,7 @@ param(
   [string]$RequiredAncestor = '9cdd4ab0fb7e5db9f504dae29d35cc1fc7a9d01c',
   [string]$RequiredBranch = 'codex-ieos-stage5-marketing-leads',
   [switch]$InteractiveUat,
+  [switch]$AllowUncommittedCandidate,
   [switch]$SelfTest
 )
 
@@ -30,8 +31,16 @@ $Results = [ordered]@{
   'Stage 3 dashboard matrix' = 'NOT RUN'
   'Stage 4 master-file matrix' = 'NOT RUN'
   'Stage 5 marketing-lead matrix' = 'NOT RUN'
-  'Staging replay 001-008' = 'NOT RUN'
+  'Staging replay 001-010' = 'NOT RUN'
+  'Migration transaction rollback' = 'NOT RUN'
+  'Recovery restore drill' = 'NOT RUN'
+  'Public approval/edit regression' = 'NOT RUN'
+  'P0 legacy security matrix' = 'NOT RUN'
+  'Final privilege security matrix' = 'NOT RUN'
+  'Incremental hosted-shape adoption drill' = 'NOT RUN'
+  'Historical staging quarantine drill' = 'NOT RUN'
   'Database lint' = 'NOT RUN'
+  'Local security advisors' = 'NOT RUN'
   'Approval/edit regression' = 'NOT RUN'
   'Desktop/mobile UAT' = $(if ($InteractiveUat) { 'NOT RUN' } else { 'NOT REQUESTED' })
   'Cleanup' = 'NOT RUN'
@@ -56,7 +65,9 @@ $StagingScripts = @(
   '005_migrate_legacy_content.sql',
   '006_approval_workflow.sql',
   '007_edit_support.sql',
-  '008_approval_security_hardening.sql'
+  '008_approval_security_hardening.sql',
+  '009_p0_legacy_security.sql',
+  '010_p0_final_privilege_lockdown.sql'
 )
 
 $PublicScripts = @(
@@ -69,6 +80,10 @@ $PublicScripts = @(
   '20260910142301_stage3_manager_dashboard.sql'
   '20260913053937_stage4_master_file_register.sql'
   '20260913073400_stage5_restricted_marketing_leads.sql'
+  '20260913142730_stage5_lead_form_configuration.sql'
+  '20261011182326_p0_public_workflow_compatibility.sql'
+  '20261011182327_p0_legacy_security.sql'
+  '20261012015213_p0_final_legacy_privilege_lockdown.sql'
 )
 
 function Write-Utf8([string]$Path, [string]$Text) {
@@ -104,7 +119,7 @@ function Run-Native(
   } finally {
     $ErrorActionPreference = $savedPreference
   }
-  $lines = @($raw | ForEach-Object { "$_" })
+  $lines = @($raw | ForEach-Object { $line = "$_"; if ($line -match '"ANON_KEY"|"SERVICE_ROLE_KEY"') { '{"local_stack_status":"returned","credentials":"[redacted]"}' } else { $line } })
   Write-Utf8 $logPath (($lines -join "`r`n") + "`r`n")
   $lines | ForEach-Object { Write-Host $_ }
   if ($code -ne 0 -and -not $AllowFailure) {
@@ -122,9 +137,7 @@ function Resolve-SupabaseCli {
     $script:SupabaseExe = $pinned
     $script:SupabasePrefix = @()
   } else {
-    $npx = (Get-Command npx.cmd -ErrorAction Stop).Source
-    $script:SupabaseExe = $npx
-    $script:SupabasePrefix = @('--yes', "supabase@$ExpectedCliVersion")
+    throw 'Pinned local Supabase CLI is unavailable; package installation is not part of this test run.'
   }
   $versionResult = Run-Native $SupabaseExe (@($SupabasePrefix) + @('--version')) 'supabase-cli-version.log'
   $version = @($versionResult.Lines | Where-Object { $_ -match '^\d+\.\d+\.\d+$' } | Select-Object -First 1)
@@ -150,7 +163,8 @@ function Run-Docker([string[]]$ArgumentList, [string]$LogName, [switch]$AllowFai
   Run-Native 'docker.exe' $ArgumentList $LogName -AllowFailure:$AllowFailure
 }
 
-function Run-Sql([string]$SqlPath, [string]$LogName) {
+function Run-Sql([string]$SqlPath, [string]$LogName, [string]$Database = 'postgres') {
+  if ($Database -notin @('postgres','p0_recovery','p0_hosted_adoption')) { throw 'Unknown disposable database.' }
   if (-not $DbContainer -or $DbContainer -notlike 'supabase_db_ieos-stage5-*') {
     throw 'Disposable local database container was not safely resolved.'
   }
@@ -158,7 +172,7 @@ function Run-Sql([string]$SqlPath, [string]$LogName) {
   Run-Docker @('cp', $SqlPath, "${DbContainer}:$remotePath") "copy-$LogName" | Out-Null
   Run-Docker @(
     'exec', $DbContainer, 'psql', '-X', '-q', '-A', '-t',
-    '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres', '-f', $remotePath
+    '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', $Database, '-f', $remotePath
   ) $LogName
 }
 
@@ -185,7 +199,7 @@ function Assert-DisposablePath([string]$Path) {
 
 function Write-Report([int]$ExitCode) {
   $lines = @(
-    '# IEOS Stage 5 restricted marketing-lead disposable test report',
+    '# IEOS P0 sealed local candidate disposable test report',
     '',
     "- Repository: ``$Repository``",
     "- Required preserved ancestor: ``$RequiredAncestor``",
@@ -243,29 +257,37 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
 try {
   $CurrentPhase = 'Environment setup'
-  $gitHead = (& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository rev-parse HEAD).Trim()
+  $gitHead = (& git --no-optional-locks -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository rev-parse HEAD).Trim()
   if ($LASTEXITCODE -ne 0) {
     throw 'Unable to determine repository HEAD.'
   }
   $TestedHead = $gitHead
 
-  $gitBranch = (& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository branch --show-current).Trim()
+  $gitBranch = (& git --no-optional-locks -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository branch --show-current).Trim()
   if ($LASTEXITCODE -ne 0 -or $gitBranch -ne $RequiredBranch) {
     throw "Repository branch must be $RequiredBranch. Actual: $gitBranch"
   }
 
-  & git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository merge-base --is-ancestor $RequiredAncestor $gitHead
+  & git --no-optional-locks -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository merge-base --is-ancestor $RequiredAncestor $gitHead
   if ($LASTEXITCODE -ne 0) {
     throw "Repository HEAD is not descended from preserved baseline $RequiredAncestor. Actual: $gitHead"
   }
 
-  $workingTree = @(& git -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository status --porcelain --untracked-files=all)
+  $workingTree = @(& git --no-optional-locks -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository status --porcelain --untracked-files=all)
   if ($LASTEXITCODE -ne 0) {
     throw 'Unable to verify repository working tree.'
   }
   if ($workingTree.Count -gt 0) {
-    throw 'Repository working tree must be clean before disposable acceptance.'
+    if (-not $AllowUncommittedCandidate) { throw 'Working tree is uncommitted; use the explicit sealed-candidate test mode.' }
   }
+  $candidateFiles = @(& git --no-optional-locks -c "safe.directory=$($Repository -replace '\\','/')" -C $Repository ls-files --cached --others --exclude-standard)
+  $candidateManifest = @($candidateFiles | Sort-Object -Unique | ForEach-Object {
+    $filePath = Join-Path $Repository $_
+    if (Test-Path -LiteralPath $filePath -PathType Leaf) {
+      [pscustomobject]@{ Path = $_; SHA256 = (Get-FileHash -LiteralPath $filePath -Algorithm SHA256).Hash }
+    }
+  })
+  Write-Utf8 (Join-Path $OutputDirectory 'candidate-manifest.json') ($candidateManifest | ConvertTo-Json -Depth 3)
   foreach ($scriptName in $PublicScripts) {
     if (-not (Test-Path -LiteralPath (Join-Path $Repository "supabase\migrations\$scriptName"))) {
       throw "Missing public migration $scriptName"
@@ -278,10 +300,14 @@ try {
   }
   foreach ($name in @(
     'SUPABASE_ACCESS_TOKEN', 'SUPABASE_DB_PASSWORD', 'SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL', 'POSTGRES_URL', 'VERCEL_URL'
+    'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL', 'POSTGRES_URL', 'VERCEL_URL',
+    'NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','NEXT_PUBLIC_APP_URL',
+    'STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','OPENAI_API_KEY','GOOGLE_APPLICATION_CREDENTIALS'
   )) {
     Remove-Item "Env:$name" -ErrorAction SilentlyContinue
   }
+  $envFiles = @(Get-ChildItem -LiteralPath $Repository -Force -File | Where-Object { $_.Name -like '.env*' -and $_.Name -ne '.env.example' })
+  if ($envFiles.Count -gt 0) { throw 'Local .env files exist: isolate the candidate before starting a disposable server.' }
   $env:SUPABASE_TELEMETRY_DISABLED = '1'
   $env:DO_NOT_TRACK = '1'
 
@@ -301,6 +327,8 @@ try {
         throw 'Disposable Supabase UAT redirect configuration could not be constrained to port 3201.'
       }
     }
+    # Isolated ports: never stop or reuse another local Supabase project.
+    $config = [regex]::Replace($config, '\b5432[0-9]\b', { param($match) ([int]$match.Value + 1110).ToString() })
     Write-Utf8 $configPath $config
 
     $dockerInfo = Run-Docker @('info', '--format', '{{.ServerVersion}}|{{.OSType}}') 'docker-info.log'
@@ -320,9 +348,33 @@ try {
 
     $CurrentPhase = 'Public migration replay'
     foreach ($scriptName in $PublicScripts) {
+      if ($scriptName -eq '20261011182326_p0_public_workflow_compatibility.sql') {
+        $CurrentPhase = 'Migration transaction rollback'
+        $trial = "begin;
+" + ((@('20261011182326_p0_public_workflow_compatibility.sql','20261011182327_p0_legacy_security.sql','20261012015213_p0_final_legacy_privilege_lockdown.sql') | ForEach-Object {
+          (Get-Content -LiteralPath (Join-Path $Repository "supabase\migrations\$_") -Raw) -replace '(?m)^begin;\s*$','' -replace '(?m)^commit;\s*$',''
+        }) -join "
+") + "
+rollback;
+"
+        $trialPath = Join-Path $Lab 'p0-transaction-rollback.sql'
+        Write-Utf8 $trialPath $trial
+        Run-Docker @('exec',$DbContainer,'sh','-c','pg_dump -U postgres -d postgres --schema-only --schema=public --schema=staging --restrict-key=IEOSP0Rollback2026 | sed "/^\\restrict /d;/^\\unrestrict /d" > /tmp/p0-before.sql') 'rollback-before.log' | Out-Null
+
+        $defaultsQuery = "select md5(coalesce(string_agg(row(d.defaclrole::regrole::text,coalesce(n.nspname,''),d.defaclobjtype,d.defaclacl::text)::text,chr(10) order by d.defaclrole,d.defaclnamespace,d.defaclobjtype),'')) from pg_default_acl d left join pg_namespace n on n.oid=d.defaclnamespace"
+        $defaultsBefore = Run-Docker @('exec',$DbContainer,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres','-c',$defaultsQuery) 'rollback-defaults-before.log'
+        Run-Sql $trialPath 'p0-transaction-rollback.log' | Out-Null
+
+        $defaultsAfter = Run-Docker @('exec',$DbContainer,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres','-c',$defaultsQuery) 'rollback-defaults-after.log'
+        if (($defaultsBefore.Lines -join '') -ne ($defaultsAfter.Lines -join '')) { throw 'Rollback did not preserve global/schema default privileges.' }
+
+        Run-Docker @('exec',$DbContainer,'sh','-c','pg_dump -U postgres -d postgres --schema-only --schema=public --schema=staging --restrict-key=IEOSP0Rollback2026 | sed "/^\\restrict /d;/^\\unrestrict /d" > /tmp/p0-after.sql; cmp /tmp/p0-before.sql /tmp/p0-after.sql') 'rollback-schema-compare.log' | Out-Null
+        $Results['Migration transaction rollback']='PASS - candidate migrations rolled back atomically; public/staging schema, owners, ACLs and global/schema defaults unchanged'
+        $CurrentPhase = 'Public migration replay'
+      }
       Run-Sql (Join-Path $Repository "supabase\migrations\$scriptName") "public-$scriptName.log" | Out-Null
     }
-    $Results['Public migration replay'] = 'PASS - 0001-0004 plus additive Stage 1 through Stage 5 migrations'
+    $Results['Public migration replay'] = 'PASS - explicit legacy baseline, Stages 1–5, pending configuration and P0 migrations'
 
     $CurrentPhase = 'Stage 1 behavioural matrix'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\stage1_work_management_fixtures.sql') 'stage1-fixtures.log' | Out-Null
@@ -362,22 +414,26 @@ try {
 
     $CurrentPhase = 'Stage 5 marketing-lead matrix'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\stage5_marketing_lead_fixtures.sql') 'stage5-fixtures.log' | Out-Null
-    $stage5Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\stage5_marketing_lead_behavioural.sql') 'stage5-marketing-lead-matrix-60.log'
+    $stage5Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\stage5_marketing_lead_behavioural.sql') 'stage5-marketing-lead-matrix-66.log'
     $stage5Tap = Read-Tap $stage5Matrix.Log
-    if ($stage5Tap.Total -ne 60 -or $stage5Tap.Fail -ne 0) {
+    if ($stage5Tap.Total -ne 66 -or $stage5Tap.Fail -ne 0) {
       throw "Stage 5 marketing-lead matrix failed: $($stage5Tap.Pass) passed, $($stage5Tap.Fail) failed, expected 60 tests."
     }
-    $Results['Stage 5 marketing-lead matrix'] = 'PASS - 60/60 PII, scope, appointment, follow-up, duplicate, history, task-privacy and audit tests'
+    $Results['Stage 5 marketing-lead matrix'] = 'PASS - 66/66 PII, scope, appointment, follow-up, duplicate, history, task-privacy and audit tests'
 
-    $CurrentPhase = 'Staging replay 001-008'
+    $CurrentPhase = 'Staging replay 001-010'
     foreach ($scriptName in $StagingScripts) {
       Run-Sql (Join-Path $Repository "supabase\staging\$scriptName") "replay-$scriptName.log" | Out-Null
     }
-    $Results['Staging replay 001-008'] = 'PASS - clean local replay in exact order'
+    $Results['Staging replay 001-010'] = 'PASS - clean local replay in exact order'
 
     $CurrentPhase = 'Database lint'
     Run-Supabase @('db', 'lint', '--local', '--fail-on', 'error') 'database-lint.log' | Out-Null
     $Results['Database lint'] = 'PASS - Supabase database lint (error threshold)'
+    $CurrentPhase = 'Local security advisors'
+    Run-Supabase @('db','advisors','--local','--type','security','--fail-on','error') 'local-security-advisors.log' | Out-Null
+    $Results['Local security advisors']='PASS - local security advisor error gate; see log for warnings'
+
 
     $CurrentPhase = 'Approval/edit regression'
     Run-Sql (Join-Path $Repository 'supabase\tests\support\008_ieos_staging_fixtures.sql') 'behavioural-fixtures.log' | Out-Null
@@ -388,6 +444,79 @@ try {
     }
     $Results['Approval/edit regression'] = 'PASS - 35/35'
 
+    $CurrentPhase = 'Public approval/edit regression'
+    Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_public_approval_fixtures.sql') 'public-approval-fixtures.log' | Out-Null
+    $publicMatrix = Run-Sql (Join-Path $Repository 'supabase\tests\p0_public_approval_behavioural.sql') 'public-approval-matrix-35.log'
+    $publicTap = Read-Tap $publicMatrix.Log
+    if ($publicTap.Total -ne 35 -or $publicTap.Fail -ne 0) { throw 'Public approval regression failed.' }
+    $Results['Public approval/edit regression']='PASS - 35/35 against public schema'
+    $CurrentPhase = 'P0 legacy security matrix'
+    $p0Matrix = Run-Sql (Join-Path $Repository 'supabase\tests\p0_legacy_security_behavioural.sql') 'p0-legacy-security.log'
+    $p0Tap = Read-Tap $p0Matrix.Log
+    if ($p0Tap.Total -ne 66 -or $p0Tap.Fail -ne 0) { throw "P0 security matrix failed: $($p0Tap.Pass) passed; $($p0Tap.Fail) failed." }
+    $Results['P0 legacy security matrix']='PASS - 66/66 legacy negative-access, activity, roles, workflow and readiness checks'
+
+    $CurrentPhase = 'Final privilege security matrix'
+    $finalMatrix = Run-Sql (Join-Path $Repository 'supabase\tests\p0_final_privilege_behavioural.sql') 'p0-final-privilege-security.log'
+    $finalTap = Read-Tap $finalMatrix.Log
+    if ($finalTap.Total -ne 270 -or $finalTap.Fail -ne 0) { throw 'Final privilege matrix failed.' }
+    $Results['Final privilege security matrix']='PASS - 270/270 effective grants, callable functions, defaults and actual negative SQL operations'
+    $CurrentPhase = 'Recovery restore drill'
+    Run-Docker @('exec',$DbContainer,'pg_dump','-U','postgres','-d','postgres','-Fc','--schema=public','--schema=staging','--schema=auth','--schema=extensions','--schema=ieos_stage1_test','-f','/tmp/p0-recovery.dump') 'recovery-backup.log' | Out-Null
+
+    # Schema-filtered pg_dump excludes global defaults. Back up their exact SQL separately.
+    Run-Docker @('exec',$DbContainer,'sh','-c',"pg_dump -U postgres -d postgres --schema-only --section=post-data --restrict-key=IEOSP0DefaultACL2026 -f /tmp/p0-default-metadata.sql && sed -n '/^ALTER DEFAULT PRIVILEGES FOR ROLE postgres /{/ IN SCHEMA /!p;}' /tmp/p0-default-metadata.sql > /tmp/p0-global-default-acls.sql && test -s /tmp/p0-global-default-acls.sql") 'recovery-global-defaults-backup.log' | Out-Null
+    $defaultOriginal = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_default_acl_fingerprint.sql') 'recovery-defaults-original.log'
+    Run-Docker @('exec',$DbContainer,'createdb','-U','postgres','p0_recovery') 'recovery-createdb.log' | Out-Null
+    Run-Docker @('exec',$DbContainer,'pg_restore','-U','supabase_admin','-d','p0_recovery','--clean','--if-exists','--exit-on-error','/tmp/p0-recovery.dump') 'recovery-restore.log' | Out-Null
+
+    Run-Docker @('exec',$DbContainer,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','supabase_admin','-d','p0_recovery','-f','/tmp/p0-global-default-acls.sql') 'recovery-global-defaults-restore.log' | Out-Null
+    $defaultRestored = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_default_acl_fingerprint.sql') 'recovery-defaults-restored.log' 'p0_recovery'
+    if (($defaultOriginal.Lines -join '') -ne ($defaultRestored.Lines -join '')) { throw 'Recovery changed affected global/public/staging default ACLs.' }
+    $original = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_database_fingerprint.sql') 'recovery-original-checksum.log'
+    $restored = Run-Docker @('exec',$DbContainer,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','p0_recovery','-f','/tmp/p0_database_fingerprint.sql') 'recovery-restored-checksum.log'
+    $originalHash = @($original.Lines | Where-Object { $_ -match '^[a-f0-9]{32}$' })
+    $restoredHash = @($restored.Lines | Where-Object { $_ -match '^[a-f0-9]{32}$' })
+    if ($originalHash.Count -ne 1 -or $restoredHash.Count -ne 1 -or $originalHash[0] -ne $restoredHash[0]) { throw 'Restored application/auth records do not match the original checksum.' }
+    $restoredSecurity = Run-Docker @('exec',$DbContainer,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','p0_recovery','-f','/tmp/p0_legacy_security_behavioural.sql') 'recovery-restored-security.log'
+    $restoredTap = Read-Tap $restoredSecurity.Log
+    if ($restoredTap.Total -ne 66 -or $restoredTap.Fail -ne 0) { throw 'Restored database security regression failed.' }
+
+    $restoredFinal = Run-Sql (Join-Path $Repository 'supabase\tests\p0_final_privilege_behavioural.sql') 'recovery-restored-final-security.log' 'p0_recovery'
+    $restoredFinalTap = Read-Tap $restoredFinal.Log
+    if ($restoredFinalTap.Total -ne 270 -or $restoredFinalTap.Fail -ne 0) { throw 'Restored final privilege regression failed.' }
+    $Results['Recovery restore drill']='PASS - logical restore preserves all application/Auth records, ownership/default ACLs and 336/336 legacy/final security assertions'
+    $CurrentPhase = 'Incremental hosted-shape adoption drill'
+    Run-Docker @('exec',$DbContainer,'createdb','-U','postgres','p0_hosted_adoption') 'adoption-createdb.log' | Out-Null
+    Run-Docker @('exec',$DbContainer,'pg_dump','-U','postgres','-d','postgres','-Fc','--schema=auth','--schema=extensions','--schema=ieos_stage1_test','-f','/tmp/p0-model-support.dump') 'adoption-support-backup.log' | Out-Null
+    Run-Docker @('exec',$DbContainer,'pg_restore','-U','supabase_admin','-d','p0_hosted_adoption','--clean','--if-exists','--exit-on-error','/tmp/p0-model-support.dump') 'adoption-support-restore.log' | Out-Null
+    # Historical baseline below constructs the SYNTHETIC model only, never the adoption list.
+    foreach ($base in @('0001_init.sql','0002_org_business_unit_team.sql','0003_auth_access_rls.sql','0004_content_core.sql')) {
+      Run-Sql (Join-Path $Repository "supabase\migrations\$base") "adoption-model-$base.log" 'p0_hosted_adoption' | Out-Null
+    }
+    foreach ($base in @('001_mirror_schema.sql','002_auth_access_rls.sql','004_content_core.sql','005_migrate_legacy_content.sql','006_approval_workflow.sql','007_edit_support.sql')) {
+      Run-Sql (Join-Path $Repository "supabase\staging\$base") "adoption-model-$base.log" 'p0_hosted_adoption' | Out-Null
+    }
+    $model = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_hosted_model_prepare.sql') 'adoption-model-preflight.log' 'p0_hosted_adoption'
+    $modelTap = Read-Tap $model.Log
+    if ($modelTap.Total -ne 7 -or $modelTap.Fail -ne 0) { throw 'Hosted-shape model failed recorded metadata checks.' }
+    foreach ($incremental in @($PublicScripts | Select-Object -Skip 4)) {
+      $version = $incremental.Split('_')[0]
+      $name = [IO.Path]::GetFileNameWithoutExtension($incremental).Substring($version.Length+1)
+      $body = (Get-Content -LiteralPath (Join-Path $Repository "supabase\migrations\$incremental") -Raw) -replace '(?m)^begin;\s*$','' -replace '(?m)^commit;\s*$',''
+      $atomicPath = Join-Path $Lab "adoption-atomic-$incremental"
+      Write-Utf8 $atomicPath ("begin;"+[Environment]::NewLine+$body+[Environment]::NewLine+"insert into supabase_migrations.schema_migrations(version,name) values('$version','$name');"+[Environment]::NewLine+"commit;"+[Environment]::NewLine)
+      Run-Sql $atomicPath "adoption-incremental-$incremental.log" 'p0_hosted_adoption' | Out-Null
+    }
+    $adoption = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_hosted_model_verify.sql') 'adoption-preservation-results.log' 'p0_hosted_adoption'
+    $adoptionTap = Read-Tap $adoption.Log
+    if ($adoptionTap.Total -ne 9 -or $adoptionTap.Fail -ne 0) { throw 'Incremental adoption/preservation failed.' }
+    $Results['Incremental hosted-shape adoption drill']='PASS - 7 baseline/9 adoption assertions; nine forward migrations only; historical records and ledger preserved'
+    $CurrentPhase = 'Historical staging quarantine drill'
+    $quarantine = Run-Sql (Join-Path $Repository 'supabase\tests\support\p0_staging_quarantine_drill.sql') 'adoption-staging-quarantine.log' 'p0_hosted_adoption'
+    $quarantineTap = Read-Tap $quarantine.Log
+    if ($quarantineTap.Total -ne 4 -or $quarantineTap.Fail -ne 0) { throw 'Staging quarantine preservation failed.' }
+    $Results['Historical staging quarantine drill']='PASS - 4/4 API-role denial/record preservation assertions; no hosted configuration change'
     if ($InteractiveUat) {
       $CurrentPhase = 'Desktop/mobile UAT'
       $savedPreference = $ErrorActionPreference
@@ -409,6 +538,7 @@ try {
       $env:NEXT_PUBLIC_SUPABASE_SCHEMA = 'public'
       $env:NEXT_PUBLIC_APP_URL = 'http://127.0.0.1:3201'
       $env:IEOS_LOCAL_UAT = '1'
+      $env:TZ = 'UTC'
       $nextStdout = Join-Path $OutputDirectory 'uat-next.log'
       $nextStderr = Join-Path $OutputDirectory 'uat-next-error.log'
       $nextCli = Join-Path $Repository 'node_modules\next\dist\bin\next'
@@ -441,7 +571,7 @@ try {
       if (-not $ready) { throw "Local UAT app did not start; see $nextStdout and $nextStderr" }
       Write-Host 'LOCAL UAT READY: http://127.0.0.1:3201/login'
       Write-Host 'Synthetic accounts: director@stage1.ieos.test, manager@stage1.ieos.test, intern@stage1.ieos.test'
-      Write-Host 'Synthetic password: IEOS-Stage1-UAT-Only!'
+      Write-Host 'Synthetic UAT credentials are confined to the local fixture.'
       $uatSignal = Join-Path $OutputDirectory 'uat-pass.signal'
       if (Test-Path -LiteralPath $uatSignal) { Remove-Item -LiteralPath $uatSignal -Force }
       Write-Host "Waiting for Codex UAT completion signal: $uatSignal"
@@ -456,6 +586,11 @@ try {
       if (-not $uatConfirmed) { throw 'Interactive UAT was not confirmed as PASS before timeout.' }
       Remove-Item -LiteralPath $uatSignal -Force
       $Results['Desktop/mobile UAT'] = 'PASS - Codex completed desktop and mobile-width checks against synthetic local data'
+    }
+    foreach ($candidateFile in $candidateManifest) {
+      if ((Get-FileHash -LiteralPath (Join-Path $Repository $candidateFile.Path) -Algorithm SHA256).Hash -ne $candidateFile.SHA256) {
+        throw "Candidate changed during testing: $($candidateFile.Path)"
+      }
     }
     $AcceptancePassed = $true
   } finally {

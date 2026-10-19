@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/data/access";
 import { createPortalSession } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (!user || !(await getCurrentUser())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

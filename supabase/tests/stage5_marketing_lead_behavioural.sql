@@ -1,12 +1,13 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(60);
+select extensions.plan(66);
 
 set local role anon; select ieos_stage1_test.claim(null,'anon');
 select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.marketing_leads'),'T01 [ANON] lead rows denied');
 select extensions.ok(not has_function_privilege('anon','public.search_marketing_leads(text,uuid,uuid,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,timestamptz,boolean,boolean,uuid,integer)','EXECUTE'),'T02 [ANON] search RPC denied');
 select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.lead_interactions'),'T03 [ANON] interactions denied');
 select extensions.ok(not ieos_stage1_test.probe('select count(*) from public.marketing_lead_access_grants'),'T04 [ANON] grants denied');
+select extensions.ok(not has_function_privilege('anon','public.create_marketing_campaign(uuid,uuid,text)','EXECUTE'),'T61 [ANON] campaign create RPC denied');
 reset role;
 
 set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000002','authenticated');
@@ -41,6 +42,10 @@ select extensions.ok(ieos_stage1_test.execute_ok($t$select public.create_lead_fo
 select extensions.ok(exists(select 1 from public.marketing_lead_task_links l join public.work_tasks t on t.id=l.task_id where l.lead_id='78000000-0000-0000-0000-000000000002' and t.title='Follow up LEAD-TEST-002'),'T33 [TASK PRIVACY] title contains lead number only');
 select extensions.ok(not exists(select 1 from public.marketing_lead_task_links l join public.work_tasks t on t.id=l.task_id where t.title ilike '%TEST Lead Two%' or t.instructions ilike '%6012%'),'T34 [TASK PRIVACY] generic task contains no contact PII');
 select extensions.ok(not ieos_stage1_test.execute_ok($t$update public.marketing_lead_events set metadata='{}' where lead_id='78000000-0000-0000-0000-000000000002'$t$),'T35 [AUDIT] events immutable');
+select extensions.is((select count(*)::bigint from public.business_units where is_active),1::bigint,'T62 [BUSINESS UNIT CONFIG] manager sees only explicitly granted unit');
+select extensions.ok(ieos_stage1_test.execute_ok($t$select public.create_marketing_campaign('00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000001','TEST Manager Campaign')$t$),'T63 [CAMPAIGN CONFIG] scoped manager can add a campaign');
+select extensions.ok(exists(select 1 from public.campaigns where name='TEST Manager Campaign' and user_id='71000000-0000-0000-0000-000000000002'),'T64 [CAMPAIGN ACTOR] creator derives from Auth');
+select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.create_marketing_campaign('00000000-0000-0000-0002-000000000002','a1000000-0000-0000-0000-000000000001','Forged Foreign Campaign')$t$),'T65 [CAMPAIGN SCOPE] cross-scope creation denied');
 reset role;
 
 set local role authenticated; select ieos_stage1_test.claim('71000000-0000-0000-0000-000000000003','authenticated');
@@ -82,5 +87,6 @@ select extensions.ok(ieos_stage1_test.execute_ok($t$select public.grant_marketin
 select extensions.ok(not ieos_stage1_test.execute_ok($t$select public.grant_marketing_lead_access('71000000-0000-0000-0000-000000000004','00000000-0000-0000-0002-000000000001','a0000000-0000-0000-0000-000000000001',true)$t$),'T59 [INTERN CAPABILITY] management grant rejected');
 select extensions.is((select count(*)::bigint from public.marketing_lead_settings),1::bigint,'T60 [SETTINGS] Director sees bounded configuration');
 
+select extensions.is((select count(*)::bigint from public.business_units where is_active),4::bigint,'T66 [BUSINESS UNIT CONFIG] Director sees four synthetic active units');
 select * from extensions.finish();
 rollback;

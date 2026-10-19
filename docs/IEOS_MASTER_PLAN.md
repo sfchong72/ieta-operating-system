@@ -1,8 +1,16 @@
 # IEOS Authoritative Staged Product Plan
 
-Status: Stages 0 through 4 accepted; Stage 5 Restricted Marketing Lead Register
-is authorised for local implementation and validation only. Stage 6 is not
-authorised.
+Status (12 October 2026): Stages 0 through 4 accepted. Director authorised
+local P0 stabilisation and Stage 5 completion/testing, with D1/D4/D8 approved
+in principle. The tested local candidate awaits Director release approval;
+hosted changes, commits, pushes, deployment, Stage 6 and P1–P4 remain
+unauthorised. See `IEOS_P0_RELEASE_READINESS.md` for the bounded baseline.
+
+Retain one Inter Excel organisation with IETA, IEA, PLC and KALER business
+units, department scope and explicit cross-company grants. One application
+authorisation role per user is separate from business job responsibilities.
+Preserve confidentiality classes and default denial. This does not authorise
+activation of all four business units in production.
 
 This plan supersedes the repository's earlier demo-first product plan wherever
 they conflict. Historical documents remain available for recovery and context.

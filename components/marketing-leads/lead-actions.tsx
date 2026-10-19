@@ -10,7 +10,7 @@ const input = "mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-s
 
 export function LeadInteractionForm({ leadId }: { leadId: string }) {
   const [state, action] = useActionState(addLeadInteractionAction, EMPTY);
-  return <form action={action} className="space-y-3 rounded-lg border border-neutral-200 p-4"><h2 className="font-semibold">Add interaction</h2><FormError message={state.error} />{state.success && <p className="text-sm text-emerald-700">{state.success}</p>}<input type="hidden" name="lead_id" value={leadId} />
+  return <form id="add-interaction" action={action} className="scroll-mt-24 space-y-3 rounded-lg border border-neutral-200 p-4"><h2 className="font-semibold">Add dated follow-up</h2><p className="text-sm text-neutral-600">Record each contact separately. Earlier entries cannot be overwritten. Dates and times use MYT (UTC+8).</p><FormError message={state.error} />{state.success && <p className="text-sm text-emerald-700">{state.success}</p>}<input type="hidden" name="lead_id" value={leadId} />
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">When<input type="datetime-local" name="interaction_at" className={input} /></label><label className="text-sm">Type<select name="interaction_type" defaultValue="call" className={input}>{LEAD_INTERACTION_TYPES.map(x=><option key={x} value={x}>{humaniseLead(x)}</option>)}</select></label></div>
     <label className="block text-sm">Result<textarea name="result" required maxLength={2000} rows={3} className={input} /></label>
     <label className="block text-sm">Next action<input name="next_action" required maxLength={1000} className={input} /></label>

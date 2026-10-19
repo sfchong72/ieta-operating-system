@@ -15,11 +15,14 @@ export async function assignRoleAction(
   const profile_id = String(formData.get("profile_id") ?? "");
   const role = String(formData.get("role") ?? "") as Role;
   if (!profile_id || !role) return { error: "Missing profile or role." };
+  if (!["super_admin", "management", "staff", "intern"].includes(role)) {
+    return { error: "Invalid application role." };
+  }
+  const currentUser = await getCurrentUser();
+  if (currentUser?.role !== "super_admin") return { error: "Only Super Admin can assign roles." };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("user_role_assignment")
-    .upsert({ profile_id, role }, { onConflict: "profile_id,role" });
+  const { error } = await supabase.rpc("assign_application_role", { p_profile_id: profile_id, p_role: role });
 
   if (error) return { error: error.message };
   revalidatePath("/admin/users");

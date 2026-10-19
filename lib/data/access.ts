@@ -30,8 +30,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [profileRes, roleRes, buAccessRes, deptAccessRes, dashboardRes, leadsRes] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+  // Check activity before querying capabilities or rendering any module.
+  const profileRes = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (profileRes.error) throw profileRes.error;
+  if (!profileRes.data || profileRes.data.is_active !== true) return null;
+
+  const [roleRes, buAccessRes, deptAccessRes, dashboardRes, leadsRes] = await Promise.all([
     supabase.from("user_role_assignment").select("*").eq("profile_id", user.id).maybeSingle(),
     supabase.from("user_business_unit_access").select("*").eq("profile_id", user.id),
     supabase.from("user_department_access").select("*").eq("profile_id", user.id),
@@ -43,7 +47,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     if (res.error) throw res.error;
   }
 
-  if (!profileRes.data) return null;
+  if (!roleRes.data) return null;
 
   return {
     profile: profileRes.data,

@@ -63,6 +63,6 @@ export function humaniseLead(value: string) {
 
 export function formatLeadDate(value: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-MY", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-MY", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(value));
 }
 
