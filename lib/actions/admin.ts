@@ -101,12 +101,46 @@ export async function inviteUserAction(
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/auth/callback`,
+  const normalisedEmail = email.toLowerCase();
+  const { data: usersPage, error: usersError } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
   });
+  if (usersError) return { error: "Could not verify the existing Auth user." };
 
-  // Never surface the raw Admin API response to the client — only a message.
-  if (error) return { error: error.message };
+  let authUser = usersPage.users.find(
+    (user) => user.email?.toLowerCase() === normalisedEmail,
+  );
+
+  // Do not send another invitation when the Auth identity already exists.
+  // This also lets Super Admin repair an older invite that has no IEOS
+  // profile, without asking the user to click another magic link.
+  if (!authUser) {
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(normalisedEmail, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/auth/callback`,
+    });
+
+    // Never surface the raw Admin API response to the client — only a message.
+    if (error || !data.user) return { error: error?.message ?? "The invitation failed." };
+    authUser = data.user;
+  }
+
+  // Auth identities and IEOS profiles are separate. Provision the minimum
+  // matching profile so the user appears in Admin · Users. No application
+  // role, company or department access is granted here; those remain explicit
+  // Super Admin decisions and RLS continues to deny access by default.
+  const { error: profileError } = await admin.from("profiles").upsert(
+    {
+      id: authUser.id,
+      email: normalisedEmail,
+      full_name: null,
+      is_active: true,
+    },
+    { onConflict: "id", ignoreDuplicates: true },
+  );
+  if (profileError) {
+    return { error: "Auth user exists, but the IEOS profile could not be prepared." };
+  }
 
   revalidatePath("/admin/users");
   return { success: true };

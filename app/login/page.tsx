@@ -1,7 +1,21 @@
 import { LoginForm } from "@/components/login-form";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/data/access";
+import { createClient } from "@/lib/supabase/server";
 
-export default function LoginPage() {
+export default async function LoginPage() {
   const localUat = process.env.IEOS_LOCAL_UAT === "1";
+
+  if (!localUat) {
+    const currentUser = await getCurrentUser();
+    if (currentUser) redirect("/dashboard");
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) redirect("/access-pending");
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-8">

@@ -43,7 +43,11 @@ export default async function AdminUsersPage() {
       />
 
       <div className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold">Invite a new user</h2>
+        <h2 className="mb-2 text-sm font-semibold">Invite or prepare a user</h2>
+        <p className="mb-3 max-w-2xl text-xs text-neutral-500">
+          This creates the sign-in identity and IEOS profile only. Assign the application role and
+          approved business-unit or department access separately below.
+        </p>
         <InviteForm />
       </div>
 

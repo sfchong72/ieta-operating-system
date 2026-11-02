@@ -21,7 +21,7 @@ export function InviteForm() {
         />
         <FormError message={state.error} />
       </div>
-      <SubmitButton pendingText="Inviting…">Invite</SubmitButton>
+      <SubmitButton pendingText="Preparing…">Invite / prepare</SubmitButton>
     </form>
   );
 }
