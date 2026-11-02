@@ -10,6 +10,7 @@ import {
   revokeDepartmentAccessAction,
   type ActionState,
 } from "@/lib/actions/admin";
+import { SubmitButton } from "@/components/submit-button";
 import type { BusinessUnit, Department, Profile, Role } from "@/lib/data/types";
 
 const ROLES: Role[] = ["super_admin", "management", "staff", "intern"];
@@ -23,6 +24,7 @@ export function RoleForm({ profile, currentRole }: { profile: Profile; currentRo
       <form action={formAction} className="flex items-center gap-2">
         <input type="hidden" name="profile_id" value={profile.id} />
         <select
+          key={currentRole ?? "unassigned"}
           name="role"
           defaultValue={currentRole ?? ""}
           className="rounded-md border border-neutral-300 px-2 py-1 text-xs"
@@ -36,10 +38,14 @@ export function RoleForm({ profile, currentRole }: { profile: Profile; currentRo
             </option>
           ))}
         </select>
-        <button type="submit" className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50">
+        <SubmitButton
+          pendingText="Saving…"
+          className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50 disabled:opacity-50"
+        >
           Set
-        </button>
+        </SubmitButton>
       </form>
+      {state.success ? <span className="text-xs text-emerald-700">Role saved.</span> : null}
       {currentRole ? (
         <form action={removeAction}>
           <input type="hidden" name="profile_id" value={profile.id} />
