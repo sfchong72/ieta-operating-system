@@ -14,6 +14,8 @@ import {
   RoleForm,
   BusinessUnitAccessForm,
   DepartmentAccessForm,
+  RevokeBusinessUnitAccessForm,
+  RevokeDepartmentAccessForm,
 } from "@/components/admin/role-form";
 
 export default async function AdminUsersPage() {
@@ -79,7 +81,12 @@ export default async function AdminUsersPage() {
                       {myBu.length === 0 ? (
                         <li className="text-neutral-400">none</li>
                       ) : (
-                        myBu.map((a) => <li key={a.id}>{buById.get(a.business_unit_id)}</li>)
+                        myBu.map((a) => (
+                          <li key={a.id} className="flex items-center justify-between gap-2">
+                            <span>{buById.get(a.business_unit_id)}</span>
+                            <RevokeBusinessUnitAccessForm profile={p} accessId={a.id} />
+                          </li>
+                        ))
                       )}
                     </ul>
                     <BusinessUnitAccessForm profile={p} businessUnits={businessUnits} />
@@ -89,7 +96,12 @@ export default async function AdminUsersPage() {
                       {myDept.length === 0 ? (
                         <li className="text-neutral-400">none</li>
                       ) : (
-                        myDept.map((a) => <li key={a.id}>{deptById.get(a.department_id)}</li>)
+                        myDept.map((a) => (
+                          <li key={a.id} className="flex items-center justify-between gap-2">
+                            <span>{deptById.get(a.department_id)}</span>
+                            <RevokeDepartmentAccessForm profile={p} accessId={a.id} />
+                          </li>
+                        ))
                       )}
                     </ul>
                     <DepartmentAccessForm profile={p} departments={departments} />

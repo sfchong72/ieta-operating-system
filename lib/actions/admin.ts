@@ -8,6 +8,13 @@ import type { Role } from "@/lib/data/types";
 
 export type ActionState = { error?: string; success?: boolean };
 
+async function requireSuperAdmin(): Promise<ActionState | null> {
+  const currentUser = await getCurrentUser();
+  return currentUser?.role === "super_admin"
+    ? null
+    : { error: "Only Super Admin can manage user access." };
+}
+
 export async function assignRoleAction(
   _prev: ActionState,
   formData: FormData,
@@ -18,8 +25,8 @@ export async function assignRoleAction(
   if (!["super_admin", "management", "staff", "intern"].includes(role)) {
     return { error: "Invalid application role." };
   }
-  const currentUser = await getCurrentUser();
-  if (currentUser?.role !== "super_admin") return { error: "Only Super Admin can assign roles." };
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("assign_application_role", { p_profile_id: profile_id, p_role: role });
@@ -36,6 +43,9 @@ export async function grantBusinessUnitAccessAction(
   const profile_id = String(formData.get("profile_id") ?? "");
   const business_unit_id = String(formData.get("business_unit_id") ?? "");
   if (!profile_id || !business_unit_id) return { error: "Missing profile or business unit." };
+
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -58,12 +68,87 @@ export async function grantDepartmentAccessAction(
   const department_id = String(formData.get("department_id") ?? "");
   if (!profile_id || !department_id) return { error: "Missing profile or department." };
 
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("user_department_access")
     .upsert({ profile_id, department_id }, { onConflict: "profile_id,department_id" });
 
   if (error) return { error: error.message };
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function removeRoleAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile_id = String(formData.get("profile_id") ?? "");
+  if (!profile_id) return { error: "Missing profile." };
+
+  const currentUser = await getCurrentUser();
+  if (currentUser?.role !== "super_admin") {
+    return { error: "Only Super Admin can manage user access." };
+  }
+  if (currentUser.profile.id === profile_id) {
+    return { error: "You cannot remove your own Super Admin role." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_role_assignment")
+    .delete()
+    .eq("profile_id", profile_id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function revokeBusinessUnitAccessAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile_id = String(formData.get("profile_id") ?? "");
+  const access_id = String(formData.get("access_id") ?? "");
+  if (!profile_id || !access_id) return { error: "Missing business-unit access grant." };
+
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_business_unit_access")
+    .delete()
+    .eq("id", access_id)
+    .eq("profile_id", profile_id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function revokeDepartmentAccessAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile_id = String(formData.get("profile_id") ?? "");
+  const access_id = String(formData.get("access_id") ?? "");
+  if (!profile_id || !access_id) return { error: "Missing department access grant." };
+
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_department_access")
+    .delete()
+    .eq("id", access_id)
+    .eq("profile_id", profile_id);
+  if (error) return { error: error.message };
+
   revalidatePath("/admin/users");
   return { success: true };
 }
